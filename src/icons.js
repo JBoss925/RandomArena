@@ -19,6 +19,8 @@ export const fighterIcons = {
   orbit: wrap('<circle fill="#fff" cx="32" cy="32" r="13"/><ellipse cx="32" cy="32" rx="29" ry="12" transform="rotate(-22 32 32)"/><circle fill="#151515" stroke="none" cx="54" cy="21" r="5"/>'),
   saber: wrap('<path fill="#fff" d="m45 7 7 7-27 29-8-8z"/><path d="m13 31 20 20M11 45l8 8"/>'),
   slugger: wrap('<path fill="#fff" d="M45 7c7 3 9 8 6 15L28 51c-3 4-8 5-12 2s-4-8-1-12L38 12c2-3 4-5 7-5Z"/><path d="m17 39 12 10"/>'),
+  shotgun: wrap('<path fill="#fff" d="M8 27h40l8 7-8 7H8z"/><path d="M18 41 13 55h13l7-14M45 27l8-7M49 41l7 5"/>'),
+  sniper: wrap('<path fill="#fff" d="M6 29h49v8H6z"/><path d="M18 37 13 54h12l8-17M47 29V18M40 18h14"/><circle fill="#fff" cx="35" cy="24" r="8"/>'),
 };
 
 const cache = new Map();

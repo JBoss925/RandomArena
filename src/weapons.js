@@ -2,7 +2,7 @@
 // compose one onto that ball without changing the physics or combat engine.
 export function collectWeaponHit(ball, rival, dt) {
   const weapon = ball.f.weapon;
-  if (!weapon || ball.frozen || ball.stunned) return null;
+  if (!weapon || weapon.projectile || ball.frozen || ball.stunned) return null;
   if (ball.weaponCooldown > 0) return null;
 
   const dx = Math.cos(ball.angle);
@@ -29,6 +29,20 @@ export function collectWeaponHit(ball, rival, dt) {
   };
 }
 
+export function collectWeaponWorldContact(ball,bounds,hazards=[]){
+  const weapon=ball.f.weapon;
+  if(!weapon?.reversesOnContact||ball.weaponWorldCooldown>0)return null;
+  const dx=Math.cos(ball.angle),dy=Math.sin(ball.angle);
+  const start={x:ball.x+dx*ball.radius*.55,y:ball.y+dy*ball.radius*.55};
+  const end={x:ball.x+dx*(ball.radius+weapon.length),y:ball.y+dy*(ball.radius+weapon.length)};
+  let contact=null;
+  if(end.x<bounds.left||end.x>bounds.right||end.y<bounds.top||end.y>bounds.bottom)contact={x:Math.max(bounds.left,Math.min(bounds.right,end.x)),y:Math.max(bounds.top,Math.min(bounds.bottom,end.y))};
+  if(!contact)for(const hazard of hazards)if(pointSegmentDistance(hazard.x,hazard.y,start.x,start.y,end.x,end.y)<=hazard.r+weapon.width/2){contact={x:hazard.x,y:hazard.y};break;}
+  if(!contact)return null;
+  ball.angularVelocity*=-1;ball.weaponWorldCooldown=8;
+  return contact;
+}
+
 export function drawWeapon(ctx, ball) {
   const weapon = ball.f.weapon;
   if (!weapon) return;
@@ -47,6 +61,13 @@ export function drawWeapon(ctx, ball) {
     ctx.strokeStyle = '#f4f5ef'; ctx.lineWidth = weapon.width;
     ctx.beginPath(); ctx.moveTo(bladeStart, 0); ctx.lineTo(tip, 0); ctx.stroke();
     ctx.fillStyle = '#151515'; ctx.fillRect(bladeStart - 7, -15, 8, 30);
+  } else if(weapon.projectile){
+    const start=ball.radius*.4,end=ball.radius+weapon.length;
+    ctx.strokeStyle='#151515';ctx.lineWidth=weapon.width+6;ctx.beginPath();ctx.moveTo(start,0);ctx.lineTo(end,0);ctx.stroke();
+    ctx.strokeStyle=weapon.type==='sniper'?'#d9d5c6':'#6f6b60';ctx.lineWidth=weapon.width;ctx.beginPath();ctx.moveTo(start,0);ctx.lineTo(end,0);ctx.stroke();
+    ctx.fillStyle='#151515';ctx.fillRect(start+10,-weapon.width*.72,weapon.type==='sniper'?30:22,weapon.width*1.44);
+    if(weapon.type==='sniper'){ctx.beginPath();ctx.arc(start+18,-weapon.width,7,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f3efdf';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(end-18,0);ctx.lineTo(end,0);ctx.stroke();}
+    else{ctx.strokeStyle='#f6b817';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(end-15,-weapon.width*.28);ctx.lineTo(end,-weapon.width*.4);ctx.moveTo(end-15,weapon.width*.28);ctx.lineTo(end,weapon.width*.4);ctx.stroke();}
   } else {
     const start = ball.radius * 0.45;
     const end = ball.radius + weapon.length;

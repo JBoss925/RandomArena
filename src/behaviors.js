@@ -45,7 +45,7 @@ export const behaviors={
   },
   coldSnap:{
     modifyOutgoing({sim,rival,event}){if((rival.frostFrozenUntil??0)>sim.ticks){event.damage+=16;event.iceShatter=true;}},
-    dealHit({sim,rival,event,showImpact}){if(event.iceShatter){rival.frostFrozenUntil=0;rival.stunned=0;showImpact('ICE SHATTER!',rival);}else if(event.force>8){rival.stunned+=90;rival.frostFrozenUntil=sim.ticks+rival.stunned;showImpact('FROZEN!',rival);}},
+    dealHit({sim,rival,event,showImpact,emitParticles}){if(event.iceShatter){rival.frostFrozenUntil=0;rival.stunned=0;showImpact('ICE SHATTER!',rival);emitParticles?.(rival,{count:24,color:'#d8f7ff',speed:430,gravity:260,kind:'ice',size:9});}else if(event.force>8){rival.stunned+=90;rival.frostFrozenUntil=sim.ticks+rival.stunned;showImpact('FROZEN!',rival);}},
   },
   afterburn:{
     modifyOutgoing({rival,event}){if((rival.burnStacks??0)>=2){event.damage+=10;event.ignite=true;}},
@@ -77,7 +77,7 @@ export const behaviors={
     tick({ball,sim,rival,showImpact,random,audioTone,audioHit}){ball.orbitCooldown=Math.max(0,(ball.orbitCooldown??0)-1);const radius=ball.radius+31;for(let i=0;i<2;i++){const a=sim.ticks*.065+i*Math.PI,sx=ball.x+Math.cos(a)*radius,sy=ball.y+Math.sin(a)*radius,dx=rival.x-sx,dy=rival.y-sy,d=Math.hypot(dx,dy);if(d<rival.radius+12&&!ball.orbitCooldown){rival.incoming++;const event={damage:5,force:5,ability:true};const context={sim,rival:ball,event,random,showImpact,audioTone,audioHit};runBehaviorHook(rival,'modifyIncoming',context);rival.hp-=event.damage;runBehaviorHook(rival,'takeHit',context);rival.vx+=dx/(d||1)*65;rival.vy+=dy/(d||1)*65;rival.flash=6;ball.orbitCooldown=24;showImpact('SATELLITE!',{x:sx,y:sy});break;}}},
     drawBack({ball,ctx,sim}){const r=ball.radius+31;ctx.save();ctx.strokeStyle='#151515';ctx.lineWidth=2;ctx.globalAlpha=.45;ctx.beginPath();ctx.arc(ball.x,ball.y,r,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;for(let i=0;i<2;i++){const a=sim.ticks*.065+i*Math.PI,sx=ball.x+Math.cos(a)*r,sy=ball.y+Math.sin(a)*r;ctx.fillStyle=i?'#c9bdff':'#e6ff34';ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.restore();},
   },
-  bladeTempo:{dealHit({ball,event,showImpact}){if(!event.weapon)return;ball.angularVelocity=Math.sign(ball.angularVelocity||1)*Math.min(4.5,Math.abs(ball.angularVelocity)*1.09);showImpact('TEMPO!',ball);}},
+  bladeTempo:{dealHit({ball,event,showImpact}){if(!event.weapon||event.projectile)return;ball.angularVelocity=-Math.sign(ball.angularVelocity||1)*Math.min(4.5,Math.abs(ball.angularVelocity)*1.09);showImpact('RIPOSTE!',ball);}},
   slugger:{dealHit({rival,event,showImpact}){if(!event.weapon)return;rival.wallCrash={frames:90,damage:12};showImpact('DEEP!',rival);}},
   randomSteering:{beforeMove({ball,random}){ball.vx+=(random()-.5)*20;ball.vy+=(random()-.5)*20;}},
   combatPull:{beforeMove({ball,rival,event}){const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1;ball.vx+=dx/d*90*event.dt;ball.vy+=dy/d*90*event.dt;}},

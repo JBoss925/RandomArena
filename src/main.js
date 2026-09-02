@@ -1,7 +1,8 @@
 import './style.css';
 import { runBehaviorHook } from './behaviors.js';
 import { resolveElasticCollision } from './physics.js';
-import { collectWeaponHit, drawWeapon } from './weapons.js';
+import { collectWeaponHit, collectWeaponWorldContact, drawWeapon } from './weapons.js';
+import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { drawFighterIcon } from './icons.js';
 import { fighters, getFighter } from './fighters.js';
 import { createInitialBall } from './initial-conditions.js';
@@ -63,7 +64,7 @@ function generateHazards(random){
 
 function createSim(bout) {
   const r = mulberry32(bout.seed);
-  return { balls: [createInitialBall(bout.left,'left',r),createInitialBall(bout.right,'right',r)], rng: r, ticks: 0, hitStop: 0, particles: [], impactPopups:[], echoes:[], hazards:bout.hazards, lastExchange:null, width:W, height:H, finished: false };
+  return { balls: [createInitialBall(bout.left,'left',r),createInitialBall(bout.right,'right',r)], projectiles:[], rng:r, visualRng:mulberry32(bout.seed^0x9e3779b9), ticks:0, hitStop:0, particles:[], impactPopups:[], echoes:[], hazards:bout.hazards, lastExchange:null, width:W, height:H, finished:false };
 }
 
 function setupBout() {
@@ -145,15 +146,15 @@ function update(dt) {
   s.ticks++;
   for (const e of s.echoes) { e.frames--; if(e.frames===0){const event={damage:e.damage,force:e.damage,echo:true};e.victim.hp-=event.damage;runBehaviorHook(e.victim,'takeHit',{sim:s,rival:e.attacker,event,random:s.rng,showImpact:impact,audioTone,audioHit});e.victim.flash=6;impact('ECHO!',e.victim);audioHit(.45);} }
   s.echoes=s.echoes.filter(e=>e.frames>0);
-  for (const p of s.particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 500*dt; p.life--; }
+  for (const p of s.particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += (p.gravity??500)*dt;p.rotation=(p.rotation??0)+(p.spin??0)*dt;p.life--; }
   s.particles = s.particles.filter(p => p.life > 0);
   for (const b of s.balls) {
-    b.cooldown = Math.max(0,b.cooldown-1); b.weaponCooldown=Math.max(0,b.weaponCooldown-1); b.stunned = Math.max(0,b.stunned-1); b.flash = Math.max(0,b.flash-1);
+    b.cooldown = Math.max(0,b.cooldown-1); b.weaponCooldown=Math.max(0,b.weaponCooldown-1);b.weaponWorldCooldown=Math.max(0,b.weaponWorldCooldown-1);b.fireCooldown=Math.max(0,b.fireCooldown-1); b.stunned = Math.max(0,b.stunned-1); b.flash = Math.max(0,b.flash-1);
     for(const id of Object.keys(b.hazardCooldowns))b.hazardCooldowns[id]=Math.max(0,b.hazardCooldowns[id]-1);
     if (b.burn > 0) { b.burn--; if (b.burn % 12 === 0) b.hp-=.18*(b.burnStacks||1);if(!b.burn)b.burnStacks=0; }
     if(b.wallCrash?.frames>0)b.wallCrash.frames--;
     const rival=s.balls.find(other=>other!==b);
-    const behaviorContext={sim:s,rival,event:{dt},random:s.rng,showImpact:impact,audioTone,audioHit};
+    const behaviorContext={sim:s,rival,event:{dt},random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
     runBehaviorHook(b,'tick',behaviorContext);
     if (b.frozen || b.stunned) continue;
     runBehaviorHook(b,'beforeMove',behaviorContext);
@@ -164,7 +165,12 @@ function update(dt) {
     if (b.y-b.radius < ARENA_BOUNDS.top || b.y+b.radius > ARENA_BOUNDS.bottom) { b.y = Math.max(ARENA_BOUNDS.top+b.radius,Math.min(ARENA_BOUNDS.bottom-b.radius,b.y)); b.vy *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
     if(hitWall&&b.wallCrash?.frames>0){b.hp-=b.wallCrash.damage;b.flash=8;b.wallCrash=null;impact('WALL SLAM!',b);audioHit(.9);}
     collideHazard(b, s);
+    const weaponContact=collectWeaponWorldContact(b,ARENA_BOUNDS,s.hazards);
+    if(weaponContact){impact('CLANG!',weaponContact);emitParticles(weaponContact,{count:7,color:'#f3efdf',speed:250,gravity:250});audioTone(310,.06,'square',.05);}
+    const shot=fireRangedWeapon(b,s);
+    if(shot){impact(shot.label,shot);emitParticles(shot,{count:b.f.weapon.projectiles??1,color:b.f.accent,speed:180,gravity:0});audioTone(b.f.weapon.type==='sniper'?95:135,.1,'square',.11);}
   }
+  resolveProjectileHits(stepProjectiles(s,dt,ARENA_BOUNDS,s.hazards),s);
   resolveWeaponHits(s.balls.map((ball,index)=>collectWeaponHit(ball,s.balls[1-index],dt)).filter(Boolean),s);
   collideBalls(s);
   if (s.ticks > 60*24 && !s.finished) { const [a,b]=s.balls; a.hp -= 0.18; b.hp -= 0.18; }
@@ -178,7 +184,7 @@ function resolveWeaponHits(hits,s){
   const prepared=hits.map(hit=>{
     const {attacker,victim}=hit;attacker.hits++;victim.incoming++;
     const event={force:hit.force,damage:hit.damage,weapon:true};
-    const context={sim:s,rival:victim,event,random:s.rng,showImpact:impact,audioTone,audioHit};
+    const context={sim:s,rival:victim,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
     runBehaviorHook(attacker,'modifyOutgoing',context);
     runBehaviorHook(victim,'modifyIncoming',{...context,rival:attacker});
     return {...hit,event,context};
@@ -192,11 +198,30 @@ function resolveWeaponHits(hits,s){
     victim.flash=7;s.hitStop=Math.max(s.hitStop,Math.round(2+event.force*.25));
     runBehaviorHook(attacker,'dealHit',context);
     runBehaviorHook(victim,'takeHit',{...context,rival:attacker});
-    for(let i=0;i<8;i++)s.particles.push({x:victim.x,y:victim.y,vx:(s.rng()-.5)*420,vy:(s.rng()-.5)*420,life:14+Math.floor(s.rng()*10),color:attacker.f.color});
+    for(let i=0;i<8;i++)s.particles.push({x:victim.x,y:victim.y,vx:(s.visualRng()-.5)*420,vy:(s.visualRng()-.5)*420,life:14+Math.floor(s.visualRng()*10),color:attacker.f.color});
     impact(hit.label,victim);audioHit(event.force/16);
   }
   const [left,right]=s.balls;
   s.lastExchange={tick:s.ticks,source:'weapon exchange',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
+}
+
+function resolveProjectileHits(hits,s){
+  if(!hits.length)return;
+  const before={left:s.balls[0].hp,right:s.balls[1].hp};
+  const prepared=hits.map(hit=>{
+    const attacker=hit.projectile.shooter,victim=hit.target;attacker.hits++;victim.incoming++;
+    const event={force:hit.projectile.force,damage:hit.projectile.damage,weapon:true,projectile:true};
+    const context={sim:s,rival:victim,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
+    runBehaviorHook(attacker,'modifyOutgoing',context);runBehaviorHook(victim,'modifyIncoming',{...context,rival:attacker});
+    return{...hit,attacker,victim,event,context};
+  });
+  for(const hit of prepared)hit.victim.hp-=hit.event.damage;
+  for(const hit of prepared){
+    hit.victim.flash=8;runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});
+    impact(hit.projectile.type==='sniper'?'HEADSHOT!':'PELLET!',{x:hit.x,y:hit.y});
+    emitParticles({x:hit.x,y:hit.y},{count:hit.projectile.type==='sniper'?14:5,color:hit.projectile.color,speed:320,gravity:180});audioHit(hit.event.force/20);
+  }
+  const [left,right]=s.balls;s.lastExchange={tick:s.ticks,source:'projectile volley',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
 
 function collideHazard(b,s) {
@@ -235,8 +260,8 @@ function collideBalls(s) {
     a.hits++; b.incoming++; b.hits++; a.incoming++;
     const eventA={force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)};
     const eventB={force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)};
-    const contextA={sim:s,rival:b,event:eventA,random:s.rng,showImpact:impact,audioTone,audioHit};
-    const contextB={sim:s,rival:a,event:eventB,random:s.rng,showImpact:impact,audioTone,audioHit};
+    const contextA={sim:s,rival:b,event:eventA,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
+    const contextB={sim:s,rival:a,event:eventB,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
     s.hitStop=Math.round(2+force*.32);
     // Calculate both sides before applying either result: damage is simultaneous.
     runBehaviorHook(a,'modifyOutgoing',contextA);
@@ -250,7 +275,7 @@ function collideBalls(s) {
     runBehaviorHook(b,'dealHit',contextB);
     runBehaviorHook(a,'takeHit',{...contextB,rival:b});
     s.lastExchange={tick:s.ticks,source:'body collision',before,after:{left:a.hp,right:b.hp},damageTaken:{left:before.left-a.hp,right:before.right-b.hp}};
-    for(let i=0;i<12;i++) s.particles.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,vx:(s.rng()-.5)*360,vy:(s.rng()-.5)*360,life:16+Math.floor(s.rng()*12),color:i%2?a.f.color:b.f.color});
+    for(let i=0;i<12;i++) s.particles.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,vx:(s.visualRng()-.5)*360,vy:(s.visualRng()-.5)*360,life:16+Math.floor(s.visualRng()*12),color:i%2?a.f.color:b.f.color});
     impact(force>11?'CRACK!':force>7?'WHAM!':'BOP!',{x:(a.x+b.x)/2,y:(a.y+b.y)/2}); audioHit(force/16);
   }
 }
@@ -294,10 +319,23 @@ function draw() {
   for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();} for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();} ctx.globalAlpha=1;
   ctx.strokeStyle='#151515';ctx.lineWidth=8;ctx.strokeRect(24,76,W-48,H-100);
   drawHazards(s.hazards);
-  for(const p of s.particles){ctx.globalAlpha=Math.min(1,p.life/8);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,6,6);}ctx.globalAlpha=1;
+  drawProjectiles(s.projectiles);
+  for(const p of s.particles)drawEffectParticle(p);ctx.globalAlpha=1;
   for(const b of s.balls) drawBall(b);
   drawImpactPopups(s);
   if(state.paused){ctx.fillStyle='rgba(21,21,21,.68)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#e6ff34';ctx.font='48px Archivo Black';ctx.textAlign='center';ctx.fillText('FIGHT PAUSED',W/2,H/2);}
+}
+
+function drawProjectiles(projectiles){
+  for(const p of projectiles){ctx.save();ctx.strokeStyle=p.color;ctx.fillStyle=p.type==='sniper'?'#f3efdf':p.color;ctx.lineWidth=p.type==='sniper'?5:3;ctx.beginPath();ctx.moveTo(p.previousX,p.previousY);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
+}
+
+function drawEffectParticle(p){
+  ctx.save();ctx.globalAlpha=Math.min(1,p.life/8);ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle=p.stroke??'#151515';ctx.lineWidth=1.5;
+  const size=p.size??6;
+  if(p.kind==='ice'){ctx.beginPath();ctx.moveTo(0,-size);ctx.lineTo(size*.55,size);ctx.lineTo(-size*.55,size*.45);ctx.closePath();ctx.fill();ctx.stroke();}
+  else{ctx.fillRect(-size/2,-size/2,size,size);if(p.stroke)ctx.strokeRect(-size/2,-size/2,size,size);}
+  ctx.restore();
 }
 
 function drawHazards(hazards){
@@ -361,6 +399,11 @@ function impact(word,origin){
   const x=Math.max(70,Math.min(W-70,origin?.x??W/2)),y=Math.max(115,Math.min(H-45,origin?.y??H/2));
   const index=s.impactPopups.length;
   s.impactPopups.push({word,x,y,born:performance.now(),size:word.length>12?24:word.length>8?29:36,rotation:(index%2?1:-1)*(.045+(index%3)*.025),color:word.includes('+')?'#ffffff':word.includes('−')?'#ff8c82':'#edff24'});
+}
+
+function emitParticles(origin,{count=10,color='#fff',speed=300,gravity=500,kind='spark',size=6}={}){
+  const s=state.sim;if(!s||!origin)return;
+  for(let i=0;i<count;i++){const angle=s.visualRng()*Math.PI*2,magnitude=speed*(.45+s.visualRng()*.75);s.particles.push({x:origin.x,y:origin.y,vx:Math.cos(angle)*magnitude,vy:Math.sin(angle)*magnitude,gravity,life:20+Math.floor(s.visualRng()*18),color,kind,size:size*(.65+s.visualRng()*.7),rotation:s.visualRng()*Math.PI*2,spin:(s.visualRng()-.5)*12,stroke:kind==='ice'?'#5caac0':null});}
 }
 
 let audioCtx;
