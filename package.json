@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "balance": "node scripts/generate-tier-matrix.mjs",
+    "balance:check": "npm run balance && node scripts/check-balance.mjs",
+    "balance:optimize": "node scripts/optimize-balance.mjs"
   },
   "devDependencies": {
     "vite": "^6.1.0"

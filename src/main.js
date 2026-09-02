@@ -3,6 +3,11 @@ import { runBehaviorHook } from './behaviors.js';
 import { resolveElasticCollision } from './physics.js';
 import { collectWeaponHit, drawWeapon } from './weapons.js';
 import { drawFighterIcon } from './icons.js';
+import { fighters, getFighter } from './fighters.js';
+import { createInitialBall } from './initial-conditions.js';
+import { contactForce } from './combat-config.js';
+import { specIcon } from './spec-icons.js';
+import { resolveOutcome } from './outcome.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('arena');
@@ -10,28 +15,8 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 const STEP = 1 / 60;
 const ARENA_BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
-const fighters = [
-  { id:'volt', name:'VOLT', color:'#ff3d2e', accent:'#ffb3a9', speed:1.08, power:.92, mass:.95, behaviors:['wallCharge'], ability:'LIVE WIRE', desc:'Every wall impact adds 3.5% speed. Volt starts modest and becomes dangerous if the fight runs long.' },
-  { id:'brick', name:'BRICK', color:'#3759ff', accent:'#aebaff', speed:.83, power:1.17, mass:1.18, behaviors:['armor'], ability:'LOAD BEARING', desc:'Dense armor reduces all incoming damage by 22%. Slow, heavy and brutally consistent.' },
-  { id:'mint', name:'MINT', color:'#20c997', accent:'#abf1dd', speed:1.12, power:.86, mass:.9, behaviors:['regeneration'], ability:'SECOND WIND', desc:'Regains 1.5 health every two seconds. Winning quickly is the cleanest way to stop the comeback.' },
-  { id:'goldie', name:'GOLDIE', color:'#f6b817', accent:'#ffe49b', speed:.96, power:1.04, mass:1.05, behaviors:['compoundPower'], ability:'COMPOUND INTEREST', desc:'Each clean hit permanently raises attack power by 4% for the rest of the bout.' },
-  { id:'void', name:'VOID', color:'#191919', accent:'#a4a4a4', speed:1.02, power:1.02, mass:1, behaviors:['siphon'], ability:'SIPHON', desc:'Converts 22% of damage dealt into health. Void rewards sustained contact.' },
-  { id:'bubble', name:'BUBBLE', color:'#ef6dca', accent:'#ffc4ef', speed:1.16, power:.82, mass:.86, behaviors:['dodge'], ability:'SLIP SKIN', desc:'Has a deterministic 18% chance to completely evade the damage from a collision.' },
-  { id:'moss', name:'MOSS', color:'#658c3a', accent:'#c2dd9e', speed:.88, power:1.12, mass:1.12, behaviors:['thorns'], ability:'THORNS', desc:'Returns 20% of contact damage to the attacker. Every reckless hit has a price.' },
-  { id:'glitch', name:'GLITCH', color:'#9c52ff', accent:'#d9bcff', speed:1.05, power:.98, mass:.96, behaviors:['blink'], ability:'PACKET LOSS', desc:'Blinks to a seeded position every four seconds, breaking pressure and changing the angle.' },
-  { id:'frost', name:'FROST', color:'#7bdff2', accent:'#d8f7ff', speed:.91, power:1.02, mass:1.04, behaviors:['coldSnap'], ability:'COLD SNAP', desc:'Heavy hits freeze the opponent for 0.75 seconds. Freeze is engine-controlled—never player-controlled.' },
-  { id:'ember', name:'EMBER', color:'#ff6b1a', accent:'#ffc49c', speed:1.01, power:.93, mass:.97, behaviors:['afterburn'], ability:'AFTERBURN', desc:'Clean hits ignite the opponent, dealing a small amount of fixed damage over two seconds.' },
-  { id:'echo', name:'ECHO', color:'#00a6a6', accent:'#9ce3df', speed:1.04, power:.9, mass:.94, behaviors:['echo'], ability:'DOUBLE TAP', desc:'Every hit repeats for 35% damage after a short delay—even if Echo has already bounced away.' },
-  { id:'rook', name:'ROOK', color:'#c9c3b9', accent:'#ffffff', speed:.82, power:1.08, mass:1.2, behaviors:['thirdHitBlock'], ability:'CASTLE WALL', desc:'Every third incoming hit is blocked completely. The count is visible in its orbiting pips.' },
-  { id:'comet', name:'COMET', color:'#ff477e', accent:'#ffc2d4', speed:1.2, power:.78, mass:.82, behaviors:['continuousAcceleration'], ability:'TAILWIND', desc:'Accelerates continuously while moving. Contact resets part of the buildup, so open space is its friend.' },
-  { id:'static', name:'STATIC', color:'#e5ff00', accent:'#ffffff', speed:1, power:.94, mass:.95, behaviors:['fourthStrike'], ability:'FOURTH STRIKE', desc:'Every fourth clean hit discharges bonus damage and a longer impact freeze.' },
-  { id:'anchor', name:'ANCHOR', color:'#536878', accent:'#b9c8d2', speed:.72, power:1.12, mass:1.34, behaviors:['woundedPower'], ability:'DEAD WEIGHT', desc:'Nearly impossible to knock around. Its attack power rises as its health falls.' },
-  { id:'orbit', name:'ORBIT', color:'#6c4cff', accent:'#c9bdff', speed:.96, power:.9, mass:.98, behaviors:['orbitalPulse'], ability:'PERIAPSIS', desc:'A satellite pulse strikes the opponent every three seconds. Survive long enough and space wins.' },
-  { id:'saber', name:'SABER', color:'#d93636', accent:'#ffb0a8', speed:.92, power:1.02, mass:1.02, behaviors:[], weapon:{type:'sword',length:88,width:14,angularSpeed:2.7,damage:8,cooldown:22,knockback:35}, ability:'CLOCKHAND', desc:'A long sword rotates continuously around Saber. Blade contact deals damage before the bodies collide.' },
-  { id:'slugger', name:'SLUGGER', color:'#c47b38', accent:'#f1c590', speed:.88, power:.94, mass:1.08, behaviors:[], weapon:{type:'bat',length:80,width:20,angularSpeed:-3.35,damage:5,cooldown:25,knockback:245}, ability:'DEEP CENTER', desc:'A rotating bat deals light damage but launches opponents away with tremendous knockback.' },
-];
-
-const state = { date: localDateKey(), mode: 'daily', seed: '', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
+const BUMPER_REFERENCE_SPEED=650;
+const state = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
 
 function localDateKey() {
   const d = new Date();
@@ -70,7 +55,7 @@ function generateHazards(random){
       y=Math.round(ARENA_BOUNDS.top+r+18+random()*(ARENA_BOUNDS.bottom-ARENA_BOUNDS.top-r*2-36));
       attempt++;
     }while(attempt<30&&(hazards.some(h=>Math.hypot(h.x-x,h.y-y)<h.r+r+34)||Math.hypot(x-165,y-H/2)<r+105||Math.hypot(x-(W-165),y-H/2)<r+105));
-    const value=type==='spikes'?Math.round(3+random()*6):type==='medbay'?Math.round(4+random()*7):type==='pinball'?Math.round(340+random()*150):0;
+    const value=type==='spikes'?Math.round(3+random()*6):type==='medbay'?Math.round(4+random()*7):type==='pinball'?Math.round((1.8+random()*.7)*10)/10:0;
     hazards.push({id:`${type}-${i}`,type,x,y,r,value});
   }
   return hazards;
@@ -78,8 +63,7 @@ function generateHazards(random){
 
 function createSim(bout) {
   const r = mulberry32(bout.seed);
-  const make = (f, side) => ({ f, side, x: side === 'left' ? 165 : W-165, y: H/2 + (r()-.5)*70, vx: (side === 'left'?1:-1)*(570+r()*160)*f.speed, vy: (r()-.5)*310, radius: 64*f.mass, angle:side==='left'?0:Math.PI, angularVelocity:f.weapon?.angularSpeed??((side==='left'?1:-1)*(.8+r()*1.4)), hp: 100, cooldown: 0, hazardCooldowns:{}, weaponCooldown:0, stunned: 0, frozen: false, flash: 0, powerScale:1, hits:0, incoming:0, burn:0, wallBoost:1 });
-  return { balls: [make(bout.left,'left'), make(bout.right,'right')], rng: r, ticks: 0, hitStop: 0, particles: [], echoes:[], hazards:bout.hazards, width:W, height:H, finished: false };
+  return { balls: [createInitialBall(bout.left,'left',r),createInitialBall(bout.right,'right',r)], rng: r, ticks: 0, hitStop: 0, particles: [], impactPopups:[], echoes:[], hazards:bout.hazards, lastExchange:null, width:W, height:H, finished: false };
 }
 
 function setupBout() {
@@ -91,39 +75,66 @@ function setupBout() {
   setDossier('left', b.left); setDossier('right', b.right);
   $('left-number').textContent = String(fighters.indexOf(b.left)+1).padStart(2,'0'); $('right-number').textContent = String(fighters.indexOf(b.right)+1).padStart(2,'0');
   const hazardNames=b.hazards.length?b.hazards.map(h=>h.type.toUpperCase()).join(' + '):'OPEN';
-  $('bout-number').textContent = num; $('round-label').textContent = `BOUT ${num} / 05`; $('seed-label').textContent = `SEED ${b.seed.toString(16).toUpperCase().padStart(8,'0')} / ${hazardNames}`;
+  $('round-label').textContent = state.mode==='versus'?'1V1 LAB':`BOUT ${num} / 05`; $('seed-label').textContent = `SEED ${b.seed.toString(16).toUpperCase().padStart(8,'0')} / ${hazardNames}`;
   document.documentElement.style.setProperty('--red', b.left.color); document.documentElement.style.setProperty('--blue', b.right.color);
   document.querySelectorAll('.pick-card').forEach(el => el.classList.remove('selected'));
-  $('lock-pick').disabled = true; $('lock-pick').hidden = false; $('pick-list').hidden = false; $('result-card').hidden = true; $('result-card').classList.remove('loss');
-  $('arena-stamp').textContent = 'MAKE YOUR PICK'; $('arena-stamp').classList.remove('hidden');
+  $('lock-pick').disabled = true; $('lock-pick').hidden = state.mode==='versus'; $('pick-list').hidden = state.mode==='versus'; $('versus-controls').hidden=state.mode!=='versus'; $('result-card').hidden = true; $('result-card').classList.remove('loss','close-call');$('result-breakdown').hidden=true;
+  $('arena-stamp').textContent = state.mode==='versus'?'READY':'MAKE YOUR PICK'; $('arena-stamp').classList.remove('hidden');
+  $('bet-title').hidden=false;$('fight-instruction').hidden=false;
   $('global-pause').textContent = 'Ⅱ PAUSE FIGHT'; $('global-pause').classList.remove('active');
   updatePips(); updateHud(); draw();
 }
 
 function resetCard(){
   state.index=0;state.wins=0;state.losses=0;state.cardComplete=false;
-  state.bouts=generateCard(state.seed);$('record').textContent='0—0';setupBout();
+  state.bouts=state.mode==='versus'?[{left:getFighter(state.versusLeft),right:getFighter(state.versusRight),hazards:[],seed:hashString(`versus:${state.seed}`)}]:generateCard(state.seed);
+  $('record').textContent='0—0';setupBout();
 }
 
-function setMode(mode,seed,{push=true}={}){
-  state.mode=mode==='endless'?'endless':'daily';
+function setMode(mode,seed,{push=true,left=state.versusLeft,right=state.versusRight}={}){
+  state.mode=mode==='versus'?'versus':mode==='endless'?'endless':'daily';
+  state.versusLeft=getFighter(left)?.id??'volt';state.versusRight=getFighter(right)?.id??'brick';
   state.seed=state.mode==='daily'?`DAILY-${state.date}`:cleanSeed(seed||randomSeed());
   document.querySelectorAll('[data-route]').forEach(link=>link.classList.toggle('active',link.dataset.route===state.mode));
-  $('seed-title').textContent=state.mode==='daily'?'DAILY SEED':'ENDLESS SEED';
+  document.body.classList.toggle('versus-mode',state.mode==='versus');
+  $('stats-viewer').hidden=state.mode!=='versus';
+  $('seed-title').textContent=state.mode==='daily'?'DAILY SEED':state.mode==='versus'?'MATCH SEED':'ENDLESS SEED';
   $('seed-input').value=state.seed;$('seed-input').readOnly=state.mode==='daily';
   $('load-seed').disabled=state.mode==='daily';
   $('random-seed').disabled=state.mode==='daily';
-  $('seed-help').textContent=state.mode==='daily'?"Today's seed is locked, but you can copy it.":'Enter any seed, load it, then share the link with a friend.';
-  $('mode-label').textContent=state.mode==='daily'?'Daily fight card':'Endless fight card';
-  $('today-label').textContent=state.mode==='daily'?new Date(state.date+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase():'ENDLESS EXHIBITION';
-  const url=state.mode==='daily'?'/daily':`/endless?seed=${encodeURIComponent(state.seed)}`;
+  $('seed-help').textContent=state.mode==='daily'?"Today's seed is locked, but you can copy it.":state.mode==='versus'?'Fighters and seed are encoded in this shareable URL.':'Enter any seed, load it, then share the link with a friend.';
+  $('mode-label').textContent=state.mode==='daily'?'Daily fight card':state.mode==='versus'?'1v1 laboratory':'Endless fight card';
+  $('today-label').textContent=state.mode==='daily'?new Date(state.date+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase():state.mode==='versus'?'HIDDEN TEST ROUTE':'ENDLESS EXHIBITION';
+  $('bet-title').innerHTML=state.mode==='versus'?'BUILD A<br />1V1 FIGHT':'WHO LEAVES<br />THE RING?';
+  $('fight-instruction').textContent=state.mode==='versus'?'Choose two fighters and run an open-arena deterministic matchup.':'Choose one fighter. The simulation is locked until your pick is in.';
+  $('versus-left').value=state.versusLeft;$('versus-right').value=state.versusRight;
+  const url=state.mode==='daily'?'/daily':state.mode==='versus'?`/versus?left=${state.versusLeft}&right=${state.versusRight}&seed=${encodeURIComponent(state.seed)}`:`/endless?seed=${encodeURIComponent(state.seed)}`;
   history[push?'pushState':'replaceState']({},'',url);
   resetCard();
+  if(state.mode==='versus')loadBalanceStats();
+}
+
+let balanceReportPromise;
+function loadBalanceStats(){
+  balanceReportPromise??=fetch('/data/tier-matrix.json').then(response=>{if(!response.ok||!response.headers.get('content-type')?.includes('application/json'))throw Error('Balance report unavailable');return response.json();});
+  balanceReportPromise.then(report=>renderBalanceStats(report,$('versus-left').value,$('versus-right').value)).catch(()=>$('stats-content').innerHTML='<p>Balance data unavailable. Run <code>"npm run balance"</code> to generate it.</p>');
+}
+function renderBalanceStats(report,leftId,rightId){
+  const leftRank=report.rankings.find(row=>row.id===leftId),rightRank=report.rankings.find(row=>row.id===rightId),leftF=getFighter(leftId),rightF=getFighter(rightId);
+  if(!leftRank||!rightRank)return;
+  const leftMatch=report.matrix[leftId][rightId],rightMatch=report.matrix[rightId][leftId],pct=value=>`${(value*100).toFixed(1)}%`,num=value=>Number(value).toFixed(1);
+  $('stats-sample').textContent=`${report.method.totalSimulations.toLocaleString()} FIGHTS / ${report.method.seedsPerSide} SEEDS PER SIDE`;
+  if(!leftMatch||!rightMatch){$('stats-content').innerHTML=`<div class="stat-fighter"><h3>${leftF.name} MIRROR MATCH</h3><p>The balance suite measures unique fighter pairings, so same-fighter mirrors are intentionally excluded. This 1v1 can still be run and shared.</p></div>`;return;}
+  const card=(fighter,rank,match,currentSide)=>`<article class="stat-fighter"><h3>${fighter.name}<span>${rank.tier} / #${report.rankings.indexOf(rank)+1}</span></h3><div class="stat-grid"><div><small>OVERALL SCORE</small><strong>${pct(rank.score)}</strong></div><div><small>HEAD-TO-HEAD</small><strong>${pct(match.score)}</strong></div><div><small>WINNING FROM LEFT</small><strong>${pct(match.asLeft.winRate)}</strong></div><div><small>WINNING FROM RIGHT</small><strong>${pct(match.asRight.winRate)}</strong></div><div><small>CURRENT SIDE (${currentSide})</small><strong>${pct(match[currentSide==='LEFT'?'asLeft':'asRight'].score)}</strong></div><div><small>AVG. REMAINING HP</small><strong>${num(match.averageRemainingHp)}</strong></div></div></article>`;
+  const currentLeft=leftMatch.asLeft,currentRight=rightMatch.asRight,sideBias=leftMatch.asLeft.score-leftMatch.asRight.score;
+  const matchupRows=report.rankings.filter(row=>row.id!==leftId).map(opponent=>{const m=report.matrix[leftId][opponent.id];return`<tr><td>${opponent.name}</td><td>${pct(m.score)}</td><td>${pct(m.asLeft.winRate)}</td><td>${pct(m.asRight.winRate)}</td><td>${m.wins}–${m.losses}–${m.draws}</td><td>${num(m.averageSeconds)}s</td><td>${num(m.averageRemainingHp)}</td></tr>`;}).join('');
+  const rosterRows=report.rankings.map((rank,index)=>`<tr><td>#${index+1} ${rank.name}</td><td>${rank.tier}</td><td>${pct(rank.score)}</td><td>${pct(rank.asLeft.score)}</td><td>${pct(rank.asRight.score)}</td><td>${rank.wins}–${rank.losses}–${rank.draws}</td></tr>`).join('');
+  $('stats-content').innerHTML=`<div class="stat-comparison">${card(leftF,leftRank,leftMatch,'LEFT')}${card(rightF,rightRank,rightMatch,'RIGHT')}</div><div class="insight-strip"><div><small>CURRENT-SIDE FORECAST</small><strong>${leftF.name} ${pct(currentLeft.score)} / ${rightF.name} ${pct(currentRight.score)}</strong></div><div><small>LEFT-FIGHTER SIDE BIAS</small><strong>${sideBias>=0?'+':''}${pct(sideBias)}</strong></div><div><small>AVERAGE DURATION</small><strong>${num(leftMatch.averageSeconds)} SECONDS</strong></div><div><small>SAMPLE RECORD</small><strong>${leftMatch.wins}–${leftMatch.losses}–${leftMatch.draws}</strong></div></div><div class="stats-table-wrap"><table class="stats-table"><caption>${leftF.name} MATCHUP SPREAD</caption><thead><tr><th>Opponent</th><th>Score</th><th>Wins left</th><th>Wins right</th><th>W–L–D</th><th>Duration</th><th>End HP</th></tr></thead><tbody>${matchupRows}</tbody></table></div><div class="stats-table-wrap" style="margin-top:14px"><table class="stats-table"><caption>FULL ROSTER STANDING</caption><thead><tr><th>Fighter</th><th>Tier</th><th>Overall</th><th>As left</th><th>As right</th><th>W–L–D</th></tr></thead><tbody>${rosterRows}</tbody></table></div>`;
 }
 
 function startFight() {
-  if (!state.selected || state.running) return;
-  state.running = true; $('lock-pick').hidden = true; $('arena-stamp').classList.add('hidden');
+  if ((!state.selected&&state.mode!=='versus') || state.running) return;
+  state.running = true; $('lock-pick').hidden = true; if(state.mode==='versus')$('versus-controls').hidden=true; $('arena-stamp').classList.add('hidden');
   audioTone(110, .08, 'sawtooth', .12); setTimeout(() => audioTone(180, .09, 'square', .1), 80);
 }
 
@@ -132,14 +143,15 @@ function update(dt) {
   if (!state.running || state.paused || s.finished) return;
   if (s.hitStop > 0) { s.hitStop--; return; }
   s.ticks++;
-  for (const e of s.echoes) { e.frames--; if(e.frames===0){e.victim.hp=Math.max(0,e.victim.hp-e.damage);e.victim.flash=6;impact('ECHO!');audioHit(.45);} }
+  for (const e of s.echoes) { e.frames--; if(e.frames===0){e.victim.hp=Math.max(0,e.victim.hp-e.damage);e.victim.flash=6;impact('ECHO!',e.victim);audioHit(.45);} }
   s.echoes=s.echoes.filter(e=>e.frames>0);
   for (const p of s.particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 500*dt; p.life--; }
   s.particles = s.particles.filter(p => p.life > 0);
   for (const b of s.balls) {
     b.cooldown = Math.max(0,b.cooldown-1); b.weaponCooldown=Math.max(0,b.weaponCooldown-1); b.stunned = Math.max(0,b.stunned-1); b.flash = Math.max(0,b.flash-1);
     for(const id of Object.keys(b.hazardCooldowns))b.hazardCooldowns[id]=Math.max(0,b.hazardCooldowns[id]-1);
-    if (b.burn > 0) { b.burn--; if (b.burn % 12 === 0) b.hp = Math.max(0,b.hp-.28); }
+    if (b.burn > 0) { b.burn--; if (b.burn % 12 === 0) b.hp-=.18*(b.burnStacks||1);if(!b.burn)b.burnStacks=0; }
+    if(b.wallCrash?.frames>0)b.wallCrash.frames--;
     const rival=s.balls.find(other=>other!==b);
     const behaviorContext={sim:s,rival,event:{dt},random:s.rng,showImpact:impact,audioTone,audioHit};
     runBehaviorHook(b,'tick',behaviorContext);
@@ -147,22 +159,22 @@ function update(dt) {
     runBehaviorHook(b,'beforeMove',behaviorContext);
     b.angle=(b.angle+b.angularVelocity*dt)%(Math.PI*2);
     b.x += b.vx*dt; b.y += b.vy*dt;
-    if (b.x-b.radius < ARENA_BOUNDS.left || b.x+b.radius > ARENA_BOUNDS.right) { b.x = Math.max(ARENA_BOUNDS.left+b.radius,Math.min(ARENA_BOUNDS.right-b.radius,b.x)); b.vx *= -1; runBehaviorHook(b,'wallHit',behaviorContext); }
-    if (b.y-b.radius < ARENA_BOUNDS.top || b.y+b.radius > ARENA_BOUNDS.bottom) { b.y = Math.max(ARENA_BOUNDS.top+b.radius,Math.min(ARENA_BOUNDS.bottom-b.radius,b.y)); b.vy *= -1; runBehaviorHook(b,'wallHit',behaviorContext); }
+    let hitWall=false;
+    if (b.x-b.radius < ARENA_BOUNDS.left || b.x+b.radius > ARENA_BOUNDS.right) { b.x = Math.max(ARENA_BOUNDS.left+b.radius,Math.min(ARENA_BOUNDS.right-b.radius,b.x)); b.vx *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
+    if (b.y-b.radius < ARENA_BOUNDS.top || b.y+b.radius > ARENA_BOUNDS.bottom) { b.y = Math.max(ARENA_BOUNDS.top+b.radius,Math.min(ARENA_BOUNDS.bottom-b.radius,b.y)); b.vy *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
+    if(hitWall&&b.wallCrash?.frames>0){b.hp-=b.wallCrash.damage;b.flash=8;b.wallCrash=null;impact('WALL SLAM!',b);audioHit(.9);}
     collideHazard(b, s);
   }
   resolveWeaponHits(s.balls.map((ball,index)=>collectWeaponHit(ball,s.balls[1-index],dt)).filter(Boolean),s);
   collideBalls(s);
   if (s.ticks > 60*24 && !s.finished) { const [a,b]=s.balls; a.hp -= 0.18; b.hp -= 0.18; }
-  const defeated=s.balls.filter(b=>b.hp<=0);
-  if(defeated.length===1) finishFight(defeated[0].side==='left'?'right':'left');
-  else if(defeated.length===2){
-    const [left,right]=s.balls;
-    finishFight(left.hp===right.hp?(s.rng()<.5?'left':'right'):(left.hp>right.hp?'left':'right'));
-  }
+  const outcome=resolveOutcome(s.balls[0],s.balls[1],{lastExchange:s.lastExchange,tick:s.ticks});
+  if(outcome)finishFight(outcome.winner,outcome);
 }
 
 function resolveWeaponHits(hits,s){
+  if(!hits.length)return;
+  const before={left:s.balls[0].hp,right:s.balls[1].hp};
   const prepared=hits.map(hit=>{
     const {attacker,victim}=hit;attacker.hits++;victim.incoming++;
     const event={force:hit.force,damage:hit.damage,weapon:true};
@@ -174,15 +186,17 @@ function resolveWeaponHits(hits,s){
   for(const hit of prepared)hit.victim.hp-=hit.event.damage;
   for(const hit of prepared){
     const {attacker,victim,event,context}=hit;
-    const invVictim=1/victim.f.mass,invAttacker=1/attacker.f.mass;
+    const invVictim=1/(victim.mass??victim.f.mass),invAttacker=1/(attacker.mass??attacker.f.mass);
     victim.vx+=hit.impulseX*invVictim;victim.vy+=hit.impulseY*invVictim;
     attacker.vx-=hit.impulseX*invAttacker*.18;attacker.vy-=hit.impulseY*invAttacker*.18;
     victim.flash=7;s.hitStop=Math.max(s.hitStop,Math.round(2+event.force*.25));
     runBehaviorHook(attacker,'dealHit',context);
     runBehaviorHook(victim,'takeHit',{...context,rival:attacker});
     for(let i=0;i<8;i++)s.particles.push({x:victim.x,y:victim.y,vx:(s.rng()-.5)*420,vy:(s.rng()-.5)*420,life:14+Math.floor(s.rng()*10),color:attacker.f.color});
-    impact(hit.label);audioHit(event.force/16);
+    impact(hit.label,victim);audioHit(event.force/16);
   }
+  const [left,right]=s.balls;
+  s.lastExchange={tick:s.ticks,source:'weapon exchange',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
 
 function collideHazard(b,s) {
@@ -192,9 +206,19 @@ function collideHazard(b,s) {
       const nx=dx/d,ny=dy/d; b.x=h.x+nx*min; b.y=h.y+ny*min; const dot=b.vx*nx+b.vy*ny;
       b.vx-=2*dot*nx; b.vy-=2*dot*ny;
       const ready=!b.hazardCooldowns[h.id];
-      if(h.type==='pinball') { b.vx=nx*h.value; b.vy=ny*h.value; if(ready){impact('THUNK!');audioTone(145,.09,'square',.1);s.hitStop=2;b.hazardCooldowns[h.id]=12;} }
-      else if(h.type==='spikes' && ready) { b.hp=Math.max(0,b.hp-h.value);b.flash=8;b.hazardCooldowns[h.id]=45;impact(`−${h.value} HP`);audioHit(.7); }
-      else if(h.type==='medbay' && ready) { const before=b.hp;b.hp=Math.min(100,b.hp+h.value);b.hazardCooldowns[h.id]=75;if(b.hp>before){impact(`+${h.value} HP`);audioTone(520,.12,'sine',.07);} }
+      if(h.type==='pinball') {
+        // A bumper is an absolute radial launch, not a mild elastic rebound. It
+        // never slows an already-fast fighter and is strong enough to read at a glance.
+        const incomingSpeed=Math.hypot(b.vx,b.vy);
+        const launchSpeed=Math.max(incomingSpeed,BUMPER_REFERENCE_SPEED*h.value);
+        b.vx=nx*launchSpeed;b.vy=ny*launchSpeed;
+        if(ready){
+          impact(`${h.value.toFixed(1)}× BOOST!`,{x:h.x+nx*h.r,y:h.y+ny*h.r});audioTone(190,.12,'square',.13);s.hitStop=3;b.flash=7;b.hazardCooldowns[h.id]=12;
+          for(let i=0;i<12;i++){const a=i*Math.PI/6;s.particles.push({x:h.x+Math.cos(a)*h.r,y:h.y+Math.sin(a)*h.r,vx:Math.cos(a)*420,vy:Math.sin(a)*420,life:18,color:'#f6b817'});}
+        }
+      }
+      else if(h.type==='spikes' && ready) { b.hp=Math.max(0,b.hp-h.value);b.flash=8;b.hazardCooldowns[h.id]=45;impact(`−${h.value} HP`,{x:h.x+nx*h.r,y:h.y+ny*h.r});audioHit(.7); }
+      else if(h.type==='medbay' && ready) { const before=b.hp;b.hp=Math.min(100,b.hp+h.value);b.hazardCooldowns[h.id]=75;if(b.hp>before){impact(`+${h.value} HP`,b);audioTone(520,.12,'sine',.07);} }
       else if(ready){audioHit(.3);b.hazardCooldowns[h.id]=8;}
     }
   }
@@ -206,7 +230,8 @@ function collideBalls(s) {
   if(!collision)return;
   const rel=collision.relativeNormalSpeed;
   if (!a.cooldown && !b.cooldown) {
-    const force=Math.min(16,4+Math.abs(rel)/21);
+    const before={left:a.hp,right:b.hp};
+    const force=contactForce(rel);
     a.hits++; b.incoming++; b.hits++; a.incoming++;
     const eventA={force,damage:force*a.f.power*a.powerScale};
     const eventB={force,damage:force*b.f.power*b.powerScale};
@@ -224,24 +249,43 @@ function collideBalls(s) {
     runBehaviorHook(b,'takeHit',{...contextA,rival:a});
     runBehaviorHook(b,'dealHit',contextB);
     runBehaviorHook(a,'takeHit',{...contextB,rival:b});
+    s.lastExchange={tick:s.ticks,source:'body collision',before,after:{left:a.hp,right:b.hp},damageTaken:{left:before.left-a.hp,right:before.right-b.hp}};
     for(let i=0;i<12;i++) s.particles.push({x:(a.x+b.x)/2,y:(a.y+b.y)/2,vx:(s.rng()-.5)*360,vy:(s.rng()-.5)*360,life:16+Math.floor(s.rng()*12),color:i%2?a.f.color:b.f.color});
-    impact(force>11?'CRACK!':force>7?'WHAM!':'BOP!'); audioHit(force/16);
+    impact(force>11?'CRACK!':force>7?'WHAM!':'BOP!',{x:(a.x+b.x)/2,y:(a.y+b.y)/2}); audioHit(force/16);
   }
 }
 
 function setDossier(side,f){
-  $(side+'-dossier').innerHTML=`<strong>${f.ability}</strong><p>${f.desc}</p><small>SPD ${Math.round(f.speed*100)} · PWR ${Math.round(f.power*100)} · MASS ${Math.round(f.mass*100)}</small>`;
+  const specs=f.specs.map(item=>`<div class="dossier-spec">${specIcon(item.icon)}<span><small>${item.label}</small><b>${item.value}</b></span></div>`).join('');
+  $(side+'-dossier').innerHTML=`<strong>${f.ability}</strong><p>${f.desc}</p><div class="dossier-specs">${specs}</div><small class="core-stats">SPD ${Math.round(f.speed*100)} · PWR ${Math.round(f.power*100)} · MASS ${Math.round(f.mass*100)} · FORM ±10%</small>`;
   $(side+'-info').setAttribute('aria-label',`${f.name}: ${f.ability}. ${f.desc}`);
 }
 
-function finishFight(winner) {
-  const s=state.sim; s.finished=true; state.running=false; state.result=winner; const correct=winner===state.selected; correct?state.wins++:state.losses++;
-  const name=winner==='left'?state.bouts[state.index].left.name:state.bouts[state.index].right.name;
-  $('arena-stamp').textContent=`${name} WINS`; $('arena-stamp').classList.remove('hidden');
-  $('pick-list').hidden=true; $('result-card').hidden=false; $('result-card').classList.toggle('loss',!correct); $('result-title').textContent=correct?'YOU CALLED IT':'PICK BUSTED';
-  $('result-copy').textContent=`${name} takes bout ${state.index+1}. ${correct?'The perfect card is still alive.':'No perfect card today—but the streak continues.'}`;
+function finishFight(winner,resolution={mutualKo:false}) {
+  const s=state.sim; s.finished=true; state.running=false; state.result=winner;
+  $('bet-title').hidden=true;$('fight-instruction').hidden=true;
+  const bout=state.bouts[state.index],name=winner==='left'?bout.left.name:winner==='right'?bout.right.name:'DRAW';
+  $('arena-stamp').textContent=winner==='draw'?'DEAD HEAT':`${name} WINS`; $('arena-stamp').classList.remove('hidden');
+  renderCloseCall(resolution,bout);
+  if(state.mode==='versus'){
+    $('versus-controls').hidden=true;$('result-card').hidden=false;$('result-card').classList.remove('loss');$('result-title').textContent=resolution.mutualKo?'THAT WAS CLOSE':winner==='draw'?'DEAD HEAT':`${name} WINS`;
+    if(!resolution.mutualKo)$('result-copy').textContent=`Seed ${state.seed}. Run it again or change either fighter.`;$('next-bout').textContent='RUN AGAIN →';return;
+  }
+  const correct=winner===state.selected;correct?state.wins++:state.losses++;
+  $('pick-list').hidden=true; $('result-card').hidden=false; $('result-card').classList.toggle('loss',!correct); $('result-title').textContent=resolution.mutualKo?'THAT WAS CLOSE':correct?'YOU CALLED IT':'PICK BUSTED';
+  if(!resolution.mutualKo)$('result-copy').textContent=`${name} takes bout ${state.index+1}. ${correct?'The perfect card is still alive.':'No perfect card today—but the streak continues.'}`;
   $('next-bout').textContent=state.index===4?'SEE FINAL CARD →':'NEXT BOUT →'; $('record').textContent=`${state.wins}—${state.losses}`; updatePips();
   audioTone(correct?520:100,.22,correct?'sine':'sawtooth',.15);
+}
+
+function renderCloseCall(result,bout){
+  const box=$('result-breakdown');box.hidden=!result.mutualKo;$('result-card').classList.toggle('close-call',result.mutualKo);
+  if(!result.mutualKo)return;
+  const hp=n=>`${n<0?'−':''}${Math.abs(n).toFixed(1)} HP`;
+  $('result-copy').textContent='Both fighters dropped below zero HP.';
+  $('result-final-hp').textContent=`${bout.left.name} ${hp(result.leftHp)} / ${bout.right.name} ${hp(result.rightHp)}`;
+  $('result-margin').textContent=result.decidedBy==='overkillHp'?`${result.hpMargin.toFixed(1)} HP`:'DEAD-EVEN HP';
+  $('result-ruling').textContent=result.decidedBy.replace(/([A-Z])/g,' $1').toUpperCase();
 }
 
 function draw() {
@@ -252,6 +296,7 @@ function draw() {
   drawHazards(s.hazards);
   for(const p of s.particles){ctx.globalAlpha=Math.min(1,p.life/8);ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,6,6);}ctx.globalAlpha=1;
   for(const b of s.balls) drawBall(b);
+  drawImpactPopups(s);
   if(state.paused){ctx.fillStyle='rgba(21,21,21,.68)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#e6ff34';ctx.font='48px Archivo Black';ctx.textAlign='center';ctx.fillText('FIGHT PAUSED',W/2,H/2);}
 }
 
@@ -266,7 +311,11 @@ function drawHazards(hazards){
     } else {
       ctx.fillStyle=type==='medbay'?'#20c997':type==='pinball'?'#f6b817':'#e6ff34';ctx.beginPath();ctx.arc(0,0,h.r,0,Math.PI*2);ctx.fill();ctx.stroke();
       if(type==='medbay'){const arm=h.r*.55,bar=Math.max(6,h.r*.24);ctx.fillStyle='#f3efdf';ctx.fillRect(-bar/2,-arm,bar,arm*2);ctx.fillRect(-arm,-bar/2,arm*2,bar);ctx.strokeRect(-bar/2,-arm,bar,arm*2);ctx.strokeRect(-arm,-bar/2,arm*2,bar);ctx.fillStyle='#151515';ctx.font='10px Archivo Black';ctx.textAlign='center';ctx.fillText(`+${h.value}`,0,h.r+15);}
-      else if(type==='pinball'){ctx.beginPath();ctx.arc(0,0,h.r*.63,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#151515';ctx.font=`${Math.max(9,h.r*.38)}px Archivo Black`;ctx.textAlign='center';ctx.fillText(`${h.value}`,0,4);}
+      else if(type==='pinball'){
+        ctx.beginPath();ctx.arc(0,0,h.r*.63,0,Math.PI*2);ctx.stroke();ctx.fillStyle='#151515';ctx.textAlign='center';
+        ctx.font=`${Math.max(10,h.r*.42)}px Archivo Black`;ctx.fillText(`${h.value.toFixed(1)}×`,0,1);
+        ctx.font=`${Math.max(7,h.r*.25)}px Archivo Black`;ctx.fillText('BOOST',0,h.r*.36);
+      }
       else {ctx.beginPath();ctx.moveTo(-h.r*.55,0);ctx.lineTo(h.r*.55,0);ctx.moveTo(0,-h.r*.55);ctx.lineTo(0,h.r*.55);ctx.stroke();}
     }
     ctx.restore();
@@ -290,9 +339,29 @@ function drawBall(b) {
   ctx.restore();
 }
 
+function drawImpactPopups(s){
+  const now=performance.now();
+  s.impactPopups=s.impactPopups.filter(popup=>now-popup.born<650);
+  for(const popup of s.impactPopups){
+    const progress=(now-popup.born)/650;
+    const entrance=Math.min(1,progress/.16),scale=.55+entrance*.55;
+    ctx.save();ctx.translate(popup.x,popup.y-18-progress*34);ctx.rotate(popup.rotation);ctx.scale(scale,scale);
+    const exitFade=progress<.78?1:(1-progress)/.22;
+    ctx.globalAlpha=Math.min(1,entrance*2)*Math.max(0,exitFade);
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+    ctx.font=`${popup.size}px Archivo Black`;ctx.lineWidth=5;ctx.strokeStyle='#151515';ctx.strokeText(popup.word,0,0);
+    ctx.fillStyle=popup.color;ctx.fillText(popup.word,0,0);ctx.restore();
+  }
+}
+
 function updateHud(){ if(!state.sim)return; const [a,b]=state.sim.balls; const hpA=Math.max(0,Math.min(100,a.hp)),hpB=Math.max(0,Math.min(100,b.hp)); $('left-hp').style.width=`${hpA}%`; $('right-hp').style.width=`${hpB}%`; $('left-hp-text').textContent=Math.ceil(hpA); $('right-hp-text').textContent=Math.ceil(hpB); }
 function updatePips(){ document.querySelectorAll('#score-pips li').forEach((el,i)=>{el.className='';if(i<state.index)el.classList.add(state.bouts[i].outcome);else if(i===state.index)el.classList.add('active');}); }
-function impact(word){const el=$('impact-word');el.textContent=word;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');}
+function impact(word,origin){
+  const s=state.sim;if(!s)return;
+  const x=Math.max(70,Math.min(W-70,origin?.x??W/2)),y=Math.max(115,Math.min(H-45,origin?.y??H/2));
+  const index=s.impactPopups.length;
+  s.impactPopups.push({word,x,y,born:performance.now(),size:word.length>12?24:word.length>8?29:36,rotation:(index%2?1:-1)*(.045+(index%3)*.025),color:word.includes('+')?'#ffffff':word.includes('−')?'#ff8c82':'#edff24'});
+}
 
 let audioCtx;
 function audioTone(freq,duration,type='sine',volume=.1){if(!state.sound)return;audioCtx??=new AudioContext();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}
@@ -316,6 +385,7 @@ $('lock-pick').addEventListener('click',startFight);
 $('global-pause').addEventListener('click',()=>{if(!state.running)return;state.paused=!state.paused;$('global-pause').classList.toggle('active',state.paused);$('global-pause').textContent=state.paused?'▶ RESUME FIGHT':'Ⅱ PAUSE FIGHT';});
 $('sound-toggle').addEventListener('click',()=>{state.sound=!state.sound;$('sound-toggle').textContent=`SOUND ${state.sound?'ON':'OFF'}`;if(state.sound)audioTone(420,.06,'sine',.05);});
 $('next-bout').addEventListener('click',()=>{
+  if(state.mode==='versus'){setupBout();startFight();return;}
   if(state.cardComplete){resetCard();return;}
   const correct=state.result===state.selected;state.bouts[state.index].outcome=correct?'win':'loss';
   if(state.index<4){state.index++;setupBout();}else{state.cardComplete=true;showFinal();}
@@ -330,19 +400,24 @@ async function copyText(text,button){
   catch{const input=$('seed-input');input.select();document.execCommand('copy');}
 }
 $('copy-seed').addEventListener('click',()=>copyText(state.seed,$('copy-seed')));
-$('load-seed').addEventListener('click',()=>setMode('endless',$('seed-input').value,{push:false}));
-$('random-seed').addEventListener('click',()=>setMode('endless',randomSeed(),{push:false}));
+$('load-seed').addEventListener('click',()=>setMode(state.mode==='versus'?'versus':'endless',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value}));
+$('random-seed').addEventListener('click',()=>setMode(state.mode==='versus'?'versus':'endless',randomSeed(),{push:false,left:$('versus-left').value,right:$('versus-right').value}));
 $('share-seed').addEventListener('click',()=>copyText(location.href,$('share-seed')));
-$('seed-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&state.mode==='endless')setMode('endless',$('seed-input').value,{push:false});});
+$('seed-input').addEventListener('keydown',event=>{if(event.key==='Enter'&&state.mode!=='daily')setMode(state.mode,$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});});
 addEventListener('popstate',()=>{
-  const mode=location.pathname.startsWith('/endless')?'endless':'daily';
-  const seed=new URLSearchParams(location.search).get('seed');setMode(mode,seed,{push:false});
+  const params=new URLSearchParams(location.search),mode=location.pathname.startsWith('/versus')?'versus':location.pathname.startsWith('/endless')?'endless':'daily';
+  setMode(mode,params.get('seed'),{push:false,left:params.get('left'),right:params.get('right')});
 });
 
 function showFinal(){const perfect=state.wins===5;$('result-title').textContent=perfect?'PERFECT 5 / 5':'CARD COMPLETE';$('result-copy').textContent=perfect?'Untouched. Unbeaten. Run the same seed again or start a new card.':`Final record: ${state.wins}—${state.losses}. ${state.mode==='daily'?'Come back tomorrow for five new fights.':'Try a new seed or replay this card.'}`;$('next-bout').textContent='REPLAY CARD →';}
 
 function loop(t){if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000);state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
 
-const initialMode=location.pathname.startsWith('/endless')?'endless':'daily';
-const initialSeed=new URLSearchParams(location.search).get('seed');
-setMode(initialMode,initialSeed,{push:false});requestAnimationFrame(loop);
+for(const select of [$('versus-left'),$('versus-right')])select.innerHTML=fighters.map(f=>`<option value="${f.id}">${f.name} — ${f.ability}</option>`).join('');
+for(const select of [$('versus-left'),$('versus-right')])select.addEventListener('change',()=>{
+  if(state.mode!=='versus')return;
+  setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});
+});
+$('start-versus').addEventListener('click',()=>{setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});startFight();});
+const initialParams=new URLSearchParams(location.search),initialMode=location.pathname.startsWith('/versus')?'versus':location.pathname.startsWith('/endless')?'endless':'daily';
+setMode(initialMode,initialParams.get('seed'),{push:false,left:initialParams.get('left'),right:initialParams.get('right')});requestAnimationFrame(loop);

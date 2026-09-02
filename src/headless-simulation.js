@@ -1,0 +1,74 @@
+import { runBehaviorHook } from './behaviors.js';
+import { resolveElasticCollision } from './physics.js';
+import { collectWeaponHit } from './weapons.js';
+import { createInitialBall } from './initial-conditions.js';
+import { contactForce } from './combat-config.js';
+import { resolveOutcome } from './outcome.js';
+
+const W=720,H=720,DT=1/60,BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
+const noop=()=>{};
+
+export function simulateMatch(leftFighter,rightFighter,seed,{maxTicks=60*40}={}){
+  const rng=mulberry32(hashString(`balance:v1:${seed}`));
+  const sim={balls:[createInitialBall(leftFighter,'left',rng),createInitialBall(rightFighter,'right',rng)],rng,ticks:0,hitStop:0,echoes:[],events:{},lastExchange:null,width:W,height:H};
+  for(let tick=0;tick<maxTicks;tick++){
+    if(sim.hitStop>0){sim.hitStop--;continue;}
+    sim.ticks++;
+    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0)echo.victim.hp-=echo.damage;}
+    sim.echoes=sim.echoes.filter(e=>e.frames>0);
+    for(const ball of sim.balls){
+      ball.cooldown=Math.max(0,ball.cooldown-1);ball.weaponCooldown=Math.max(0,ball.weaponCooldown-1);ball.stunned=Math.max(0,ball.stunned-1);ball.flash=Math.max(0,ball.flash-1);
+      if(ball.burn>0){ball.burn--;if(ball.burn%12===0)ball.hp-=.18*(ball.burnStacks||1);if(!ball.burn)ball.burnStacks=0;}
+      if(ball.wallCrash?.frames>0)ball.wallCrash.frames--;
+      const rival=sim.balls.find(other=>other!==ball),context=ctx(sim,rival,{dt:DT});
+      runBehaviorHook(ball,'tick',context);
+      if(ball.frozen||ball.stunned)continue;
+      runBehaviorHook(ball,'beforeMove',context);
+      ball.angle=(ball.angle+ball.angularVelocity*DT)%(Math.PI*2);ball.x+=ball.vx*DT;ball.y+=ball.vy*DT;
+      let hitWall=false;
+      if(ball.x-ball.radius<BOUNDS.left||ball.x+ball.radius>BOUNDS.right){ball.x=Math.max(BOUNDS.left+ball.radius,Math.min(BOUNDS.right-ball.radius,ball.x));ball.vx*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
+      if(ball.y-ball.radius<BOUNDS.top||ball.y+ball.radius>BOUNDS.bottom){ball.y=Math.max(BOUNDS.top+ball.radius,Math.min(BOUNDS.bottom-ball.radius,ball.y));ball.vy*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
+      if(hitWall&&ball.wallCrash?.frames>0){ball.hp-=ball.wallCrash.damage;ball.wallCrash=null;sim.events['WALL SLAM!']=(sim.events['WALL SLAM!']??0)+1;}
+    }
+    resolveWeaponHits(sim.balls.map((ball,index)=>collectWeaponHit(ball,sim.balls[1-index],DT)).filter(Boolean),sim);
+    resolveBodyHit(sim);
+    if(sim.ticks>60*24){sim.balls[0].hp-=.18;sim.balls[1].hp-=.18;}
+    const result=winner(sim);
+    if(result)return {...result,ticks:sim.ticks,events:sim.events};
+  }
+  return {winner:'draw',hp:{left:sim.balls[0].hp,right:sim.balls[1].hp},ticks:sim.ticks,events:sim.events};
+}
+
+function resolveBodyHit(sim){
+  const [a,b]=sim.balls,collision=resolveElasticCollision(a,b);if(!collision||a.cooldown||b.cooldown)return;
+  const force=contactForce(collision.relativeNormalSpeed);a.cooldown=b.cooldown=9;a.stunned=b.stunned=Math.round(3+force*.45);sim.hitStop=Math.round(2+force*.32);
+  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale}],sim,'body collision');
+}
+
+function resolveWeaponHits(hits,sim){
+  if(!hits.length)return;
+  resolveCombatEvents(hits.map(hit=>({attacker:hit.attacker,victim:hit.victim,force:hit.force,damage:hit.damage,impulseX:hit.impulseX,impulseY:hit.impulseY})),sim,'weapon exchange');
+}
+
+function resolveCombatEvents(events,sim,source){
+  const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
+  const prepared=events.map(item=>{
+    item.attacker.hits++;item.victim.incoming++;
+    const event={force:item.force,damage:item.damage,weapon:Boolean(item.impulseX||item.impulseY)};
+    const context=ctx(sim,item.victim,event);
+    runBehaviorHook(item.attacker,'modifyOutgoing',context);
+    runBehaviorHook(item.victim,'modifyIncoming',{...context,rival:item.attacker});
+    return {...item,event,context};
+  });
+  for(const hit of prepared)hit.victim.hp-=hit.event.damage;
+  for(const hit of prepared){if(hit.impulseX||hit.impulseY){const victimMass=hit.victim.mass??hit.victim.f.mass,attackerMass=hit.attacker.mass??hit.attacker.f.mass;hit.victim.vx+=hit.impulseX/victimMass;hit.victim.vy+=hit.impulseY/victimMass;hit.attacker.vx-=hit.impulseX/attackerMass*.18;hit.attacker.vy-=hit.impulseY/attackerMass*.18;sim.hitStop=Math.max(sim.hitStop,Math.round(2+hit.event.force*.25));}runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});}
+  const [left,right]=sim.balls;sim.lastExchange={tick:sim.ticks,source,before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
+}
+
+function winner(sim){
+  const [left,right]=sim.balls,outcome=resolveOutcome(left,right,{lastExchange:sim.lastExchange,tick:sim.ticks});
+  return outcome?{...outcome,hp:{left:left.hp,right:right.hp}}:null;
+}
+function ctx(sim,rival,event){return{sim,rival,event,random:sim.rng,showImpact:label=>{sim.events[label]=(sim.events[label]??0)+1;},audioTone:noop,audioHit:noop};}
+function hashString(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function mulberry32(seed){return()=>{let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296;};}
