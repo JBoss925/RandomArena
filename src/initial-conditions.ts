@@ -2,7 +2,7 @@ const W=720,H=720;
 
 // Shared by the browser and headless balance runner. Directions are seeded but
 // constrained to an inward-facing 130° cone so bouts still engage quickly.
-export function createInitialBall(fighter,side,random){
+export function createInitialBall(fighter:Fighter,side:Side,random:RandomSource):Ball{
   const verticalOffset=(random()-.5)*70;
   const speed=(570+random()*160)*fighter.speed;
   const directionOffset=(random()-.5)*(Math.PI*13/18);
@@ -17,3 +17,4 @@ export function createInitialBall(fighter,side,random){
     frozen:false,flash:0,powerScale:.9+random()*.2,hits:0,incoming:0,burn:0,burnStacks:0,wallBoost:1,wallCrash:null,
   };
 }
+import type { Ball, Fighter, RandomSource, Side } from './types';

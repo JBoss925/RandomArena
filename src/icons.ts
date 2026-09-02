@@ -1,6 +1,6 @@
-const wrap = (body) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#151515" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const wrap = (body:string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#151515" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
-export const fighterIcons = {
+export const fighterIcons:Record<string,string> = {
   volt: wrap('<path fill="#fff" d="M37 5 15 35h15l-3 24 22-34H34z"/>'),
   brick: wrap('<path fill="#fff" d="M7 14h50v36H7z"/><path d="M7 27h50M7 39h50M23 14v13m20-13v13M16 27v12m31-12v12M26 39v11"/>'),
   mint: wrap('<path fill="#fff" d="M33 54C12 44 10 20 32 9c23 10 20 34 1 45Z"/><path d="M32 14v34M19 31h26"/>'),
@@ -23,9 +23,9 @@ export const fighterIcons = {
   sniper: wrap('<path fill="#fff" d="M6 29h49v8H6z"/><path d="M18 37 13 54h12l8-17M47 29V18M40 18h14"/><circle fill="#fff" cx="35" cy="24" r="8"/>'),
 };
 
-const cache = new Map();
+const cache = new Map<string,HTMLImageElement>();
 
-export function drawFighterIcon(ctx, fighterId, x, y, size) {
+export function drawFighterIcon(ctx:CanvasRenderingContext2D, fighterId:string, x:number, y:number, size:number):void {
   let image = cache.get(fighterId);
   if (!image) {
     image = new Image();

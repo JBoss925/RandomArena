@@ -1,8 +1,9 @@
 import {readFile} from 'node:fs/promises';
+import type {BalanceReport} from '../src/types.js';
 
-const report=JSON.parse(await readFile(new URL('../reports/tier-matrix.json',import.meta.url),'utf8'));
+const report=JSON.parse(await readFile(new URL('../reports/tier-matrix.json',import.meta.url),'utf8')) as BalanceReport;
 const overallFailures=report.rankings.filter(row=>row.score<.4||row.score>.6);
-const matchupFailures=[];
+const matchupFailures:{a:string;b:string;score:number}[]=[];
 let worst={edge:0,a:'',b:'',score:0};
 for(const [a,row] of Object.entries(report.matrix))for(const [b,match] of Object.entries(row)){
   if(!match||a>=b)continue;
@@ -10,7 +11,10 @@ for(const [a,row] of Object.entries(report.matrix))for(const [b,match] of Object
   if(edge>worst.edge)worst={edge,a,b,score:match.score};
   if(match.score<.2||match.score>.8)matchupFailures.push({a,b,score:match.score});
 }
-console.log(`Overall range: ${(report.rankings.at(-1).score*100).toFixed(1)}%–${(report.rankings[0].score*100).toFixed(1)}%`);
+const weakest=report.rankings.at(-1);
+const strongest=report.rankings[0];
+if(!weakest||!strongest)throw new Error('Balance report contains no fighter rankings.');
+console.log(`Overall range: ${(weakest.score*100).toFixed(1)}%–${(strongest.score*100).toFixed(1)}%`);
 console.log(`Worst matchup: ${worst.a} / ${worst.b} — ${(worst.score*100).toFixed(1)}% / ${((1-worst.score)*100).toFixed(1)}%`);
 if(overallFailures.length||matchupFailures.length){
   console.error(`${overallFailures.length} overall and ${matchupFailures.length} matchup constraints failed.`);

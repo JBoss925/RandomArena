@@ -1,6 +1,6 @@
 // Deterministic, fixed-step 2D collision primitives.
 // Base motion has no acceleration, drag, friction, gravity, or steering.
-export function resolveElasticCollision(a, b) {
+export function resolveElasticCollision(a: Ball, b: Ball): { relativeNormalSpeed: number } | null {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const distance = Math.hypot(dx, dy);
@@ -33,3 +33,4 @@ export function resolveElasticCollision(a, b) {
   b.vy += impulse * ny * invB;
   return { relativeNormalSpeed };
 }
+import type { Ball } from './types';

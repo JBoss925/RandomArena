@@ -9,15 +9,23 @@ import { createInitialBall } from './initial-conditions.js';
 import { contactForce } from './combat-config.js';
 import { specIcon } from './spec-icons.js';
 import { resolveOutcome } from './outcome.js';
+import type { BalanceMatch, BalanceRanking, BalanceReport, Ball, Bout, Fighter, Hazard, HazardType, Outcome, Particle, ParticleOptions, Point, Projectile, ProjectileHit, Side, Simulation, WeaponHit, Winner } from './types';
 
-const $ = (id) => document.getElementById(id);
+type AppElement=HTMLElement&{value:string;readOnly:boolean;disabled:boolean;select():void};
+function $(id:'arena'):HTMLCanvasElement;
+function $(id:string):AppElement;
+function $(id:string):AppElement|HTMLCanvasElement{const element=document.getElementById(id);if(!element)throw new Error(`Missing #${id}`);return element as AppElement|HTMLCanvasElement;}
 const canvas = $('arena');
-const ctx = canvas.getContext('2d');
+const canvasContext = canvas.getContext('2d');
+if(!canvasContext)throw new Error('Canvas 2D context unavailable');
+const ctx:CanvasRenderingContext2D=canvasContext;
 const W = canvas.width, H = canvas.height;
 const STEP = 1 / 60;
 const ARENA_BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const BUMPER_REFERENCE_SPEED=650;
-const state = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
+type GameMode='daily'|'endless'|'versus';
+type AppState={date:string;mode:GameMode;seed:string;versusLeft:string;versusRight:string;bouts:Bout[];index:number;selected:Side|null;highlightedSide:Side|null;running:boolean;paused:boolean;simulationSpeed:number;result:Winner|null;wins:number;losses:number;cardComplete:boolean;sound:boolean;sim:Simulation|null;accumulator:number;lastTime:number};
+const state:AppState = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
 
 function localDateKey() {
   const d = new Date();
@@ -27,10 +35,11 @@ function randomSeed(){
   const words=new Uint32Array(2);crypto.getRandomValues(words);
   return `${words[0].toString(16).padStart(8,'0')}-${words[1].toString(16).padStart(8,'0')}`.toUpperCase();
 }
-function cleanSeed(value){return value.trim().slice(0,64)||randomSeed();}
-function hashString(str) { let h = 2166136261 >>> 0; for (let i=0;i<str.length;i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
-function mulberry32(seed) { return () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-function generateCard(seed) {
+function cleanSeed(value:string){return value.trim().slice(0,64)||randomSeed();}
+function hashString(str:string):number { let h = 2166136261 >>> 0; for (let i=0;i<str.length;i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mulberry32(seed:number):()=>number { return () => { let t = seed += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function requireFighter(id:string):Fighter{const fighter=getFighter(id);if(!fighter)throw new Error(`Unknown fighter: ${id}`);return fighter;}
+function generateCard(seed:string):Bout[] {
   const random = mulberry32(hashString(`random-arena:v3:${seed}`));
   const order=[0,1,2,3,4];
   for(let i=order.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
@@ -43,14 +52,14 @@ function generateCard(seed) {
   });
 }
 
-function generateHazards(random){
-  const types=['pillar','spikes','medbay','pinball'];
+function generateHazards(random:()=>number):Hazard[]{
+  const types:HazardType[]=['pillar','spikes','medbay','pinball'];
   for(let i=types.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
-  const count=1+Math.floor(random()*3),hazards=[];
-  const ranges={pillar:[30,46],spikes:[27,39],medbay:[30,42],pinball:[23,31]};
+  const count=1+Math.floor(random()*3),hazards:Hazard[]=[];
+  const ranges:Record<HazardType,[number,number]>={pillar:[30,46],spikes:[27,39],medbay:[30,42],pinball:[23,31]};
   for(let i=0;i<count;i++){
     const type=types[i],[minR,maxR]=ranges[type],r=Math.round(minR+random()*(maxR-minR));
-    let x,y,attempt=0;
+    let x=0,y=0,attempt=0;
     do{
       x=Math.round(ARENA_BOUNDS.left+r+18+random()*(ARENA_BOUNDS.right-ARENA_BOUNDS.left-r*2-36));
       y=Math.round(ARENA_BOUNDS.top+r+18+random()*(ARENA_BOUNDS.bottom-ARENA_BOUNDS.top-r*2-36));
@@ -62,9 +71,9 @@ function generateHazards(random){
   return hazards;
 }
 
-function createSim(bout) {
+function createSim(bout:Bout):Simulation {
   const r = mulberry32(bout.seed);
-  return { balls: [createInitialBall(bout.left,'left',r),createInitialBall(bout.right,'right',r)], projectiles:[], rng:r, visualRng:mulberry32(bout.seed^0x9e3779b9), ticks:0, hitStop:0, particles:[], impactPopups:[], echoes:[], hazards:bout.hazards, lastExchange:null, width:W, height:H, finished:false };
+  return { balls: [createInitialBall(bout.left,'left',r),createInitialBall(bout.right,'right',r)], projectiles:[], rng:r, visualRng:mulberry32(bout.seed^0x9e3779b9), ticks:0, hitStop:0, particles:[], impactPopups:[], echoes:[], hazards:bout.hazards, lastExchange:null, width:W, height:H, finished:false,events:{} };
 }
 
 function setupBout() {
@@ -89,15 +98,15 @@ function setupBout() {
 
 function resetCard(){
   state.index=0;state.wins=0;state.losses=0;state.cardComplete=false;
-  state.bouts=state.mode==='versus'?[{left:getFighter(state.versusLeft),right:getFighter(state.versusRight),hazards:[],seed:hashString(`versus:${state.seed}`)}]:generateCard(state.seed);
+  state.bouts=state.mode==='versus'?[{left:requireFighter(state.versusLeft),right:requireFighter(state.versusRight),hazards:[],seed:hashString(`versus:${state.seed}`)}]:generateCard(state.seed);
   $('record').textContent='0—0';setupBout();
 }
 
-function setMode(mode,seed,{push=true,left=state.versusLeft,right=state.versusRight}={}){
+function setMode(mode:GameMode,seed?:string|null,{push=true,left=state.versusLeft,right=state.versusRight}:{push?:boolean;left?:string|null;right?:string|null}={}){
   state.mode=mode==='versus'?'versus':mode==='endless'?'endless':'daily';
-  state.versusLeft=getFighter(left)?.id??'volt';state.versusRight=getFighter(right)?.id??'brick';
+  state.versusLeft=getFighter(left??'')?.id??'volt';state.versusRight=getFighter(right??'')?.id??'brick';
   state.seed=state.mode==='daily'?`DAILY-${state.date}`:cleanSeed(seed||randomSeed());
-  document.querySelectorAll('[data-route]').forEach(link=>link.classList.toggle('active',link.dataset.route===state.mode));
+  document.querySelectorAll<HTMLElement>('[data-route]').forEach(link=>link.classList.toggle('active',link.dataset.route===state.mode));
   document.body.classList.toggle('versus-mode',state.mode==='versus');
   $('stats-viewer').hidden=state.mode!=='versus';
   $('seed-title').textContent=state.mode==='daily'?'DAILY SEED':state.mode==='versus'?'MATCH SEED':'ENDLESS SEED';
@@ -116,20 +125,20 @@ function setMode(mode,seed,{push=true,left=state.versusLeft,right=state.versusRi
   if(state.mode==='versus')loadBalanceStats();
 }
 
-let balanceReportPromise;
+let balanceReportPromise:Promise<BalanceReport>|undefined;
 function loadBalanceStats(){
-  balanceReportPromise??=fetch('/data/tier-matrix.json').then(response=>{if(!response.ok||!response.headers.get('content-type')?.includes('application/json'))throw Error('Balance report unavailable');return response.json();});
+  balanceReportPromise??=fetch('/data/tier-matrix.json').then(async response=>{if(!response.ok||!response.headers.get('content-type')?.includes('application/json'))throw Error('Balance report unavailable');return await response.json() as BalanceReport;});
   balanceReportPromise.then(report=>renderBalanceStats(report,$('versus-left').value,$('versus-right').value)).catch(()=>$('stats-content').innerHTML='<p>Balance data unavailable. Run <code>"npm run balance"</code> to generate it.</p>');
 }
-function renderBalanceStats(report,leftId,rightId){
+function renderBalanceStats(report:BalanceReport,leftId:string,rightId:string){
   const leftRank=report.rankings.find(row=>row.id===leftId),rightRank=report.rankings.find(row=>row.id===rightId),leftF=getFighter(leftId),rightF=getFighter(rightId);
-  if(!leftRank||!rightRank)return;
-  const leftMatch=report.matrix[leftId][rightId],rightMatch=report.matrix[rightId][leftId],pct=value=>`${(value*100).toFixed(1)}%`,num=value=>Number(value).toFixed(1);
+  if(!leftRank||!rightRank||!leftF||!rightF)return;
+  const leftMatch=report.matrix[leftId][rightId],rightMatch=report.matrix[rightId][leftId],pct=(value:number)=>`${(value*100).toFixed(1)}%`,num=(value:number)=>Number(value).toFixed(1);
   $('stats-sample').textContent=`${report.method.totalSimulations.toLocaleString()} FIGHTS / ${report.method.seedsPerSide} SEEDS PER SIDE`;
   if(!leftMatch||!rightMatch){$('stats-content').innerHTML=`<div class="stat-fighter"><h3>${leftF.name} MIRROR MATCH</h3><p>The balance suite measures unique fighter pairings, so same-fighter mirrors are intentionally excluded. This 1v1 can still be run and shared.</p></div>`;return;}
-  const card=(fighter,rank,match,currentSide)=>`<article class="stat-fighter"><h3>${fighter.name}<span>${rank.tier} / #${report.rankings.indexOf(rank)+1}</span></h3><div class="stat-grid"><div><small>OVERALL SCORE</small><strong>${pct(rank.score)}</strong></div><div><small>HEAD-TO-HEAD</small><strong>${pct(match.score)}</strong></div><div><small>WINNING FROM LEFT</small><strong>${pct(match.asLeft.winRate)}</strong></div><div><small>WINNING FROM RIGHT</small><strong>${pct(match.asRight.winRate)}</strong></div><div><small>CURRENT SIDE (${currentSide})</small><strong>${pct(match[currentSide==='LEFT'?'asLeft':'asRight'].score)}</strong></div><div><small>AVG. REMAINING HP</small><strong>${num(match.averageRemainingHp)}</strong></div></div></article>`;
+  const card=(fighter:Fighter,rank:BalanceRanking,match:BalanceMatch,currentSide:'LEFT'|'RIGHT')=>`<article class="stat-fighter"><h3>${fighter.name}<span>${rank.tier} / #${report.rankings.indexOf(rank)+1}</span></h3><div class="stat-grid"><div><small>OVERALL SCORE</small><strong>${pct(rank.score)}</strong></div><div><small>HEAD-TO-HEAD</small><strong>${pct(match.score)}</strong></div><div><small>WINNING FROM LEFT</small><strong>${pct(match.asLeft.winRate)}</strong></div><div><small>WINNING FROM RIGHT</small><strong>${pct(match.asRight.winRate)}</strong></div><div><small>CURRENT SIDE (${currentSide})</small><strong>${pct(match[currentSide==='LEFT'?'asLeft':'asRight'].score)}</strong></div><div><small>AVG. REMAINING HP</small><strong>${num(match.averageRemainingHp)}</strong></div></div></article>`;
   const currentLeft=leftMatch.asLeft,currentRight=rightMatch.asRight,sideBias=leftMatch.asLeft.score-leftMatch.asRight.score;
-  const matchupRows=report.rankings.filter(row=>row.id!==leftId).map(opponent=>{const m=report.matrix[leftId][opponent.id];return`<tr><td>${opponent.name}</td><td>${pct(m.score)}</td><td>${pct(m.asLeft.winRate)}</td><td>${pct(m.asRight.winRate)}</td><td>${m.wins}–${m.losses}–${m.draws}</td><td>${num(m.averageSeconds)}s</td><td>${num(m.averageRemainingHp)}</td></tr>`;}).join('');
+  const matchupRows=report.rankings.filter(row=>row.id!==leftId).map(opponent=>{const m=report.matrix[leftId][opponent.id]!;return`<tr><td>${opponent.name}</td><td>${pct(m.score)}</td><td>${pct(m.asLeft.winRate)}</td><td>${pct(m.asRight.winRate)}</td><td>${m.wins}–${m.losses}–${m.draws}</td><td>${num(m.averageSeconds)}s</td><td>${num(m.averageRemainingHp)}</td></tr>`;}).join('');
   const rosterRows=report.rankings.map((rank,index)=>`<tr><td>#${index+1} ${rank.name}</td><td>${rank.tier}</td><td>${pct(rank.score)}</td><td>${pct(rank.asLeft.score)}</td><td>${pct(rank.asRight.score)}</td><td>${rank.wins}–${rank.losses}–${rank.draws}</td></tr>`).join('');
   $('stats-content').innerHTML=`<div class="stat-comparison">${card(leftF,leftRank,leftMatch,'LEFT')}${card(rightF,rightRank,rightMatch,'RIGHT')}</div><div class="insight-strip"><div><small>CURRENT-SIDE FORECAST</small><strong>${leftF.name} ${pct(currentLeft.score)} / ${rightF.name} ${pct(currentRight.score)}</strong></div><div><small>LEFT-FIGHTER SIDE BIAS</small><strong>${sideBias>=0?'+':''}${pct(sideBias)}</strong></div><div><small>AVERAGE DURATION</small><strong>${num(leftMatch.averageSeconds)} SECONDS</strong></div><div><small>SAMPLE RECORD</small><strong>${leftMatch.wins}–${leftMatch.losses}–${leftMatch.draws}</strong></div></div><div class="stats-table-wrap"><table class="stats-table"><caption>${leftF.name} MATCHUP SPREAD</caption><thead><tr><th>Opponent</th><th>Score</th><th>Wins left</th><th>Wins right</th><th>W–L–D</th><th>Duration</th><th>End HP</th></tr></thead><tbody>${matchupRows}</tbody></table></div><div class="stats-table-wrap" style="margin-top:14px"><table class="stats-table"><caption>FULL ROSTER STANDING</caption><thead><tr><th>Fighter</th><th>Tier</th><th>Overall</th><th>As left</th><th>As right</th><th>W–L–D</th></tr></thead><tbody>${rosterRows}</tbody></table></div>`;
 }
@@ -140,13 +149,13 @@ function startFight() {
   audioTone(110, .08, 'sawtooth', .12); setTimeout(() => audioTone(180, .09, 'square', .1), 80);
 }
 
-function renderHazardTooltips(hazards){
+function renderHazardTooltips(hazards:Hazard[]):void{
   const layer=$('hazard-tooltips');
-  const detail={
+  const detail:Record<HazardType,{icon:string;label:string;value:string|((hazard:Hazard)=>string)}>={
     pillar:{icon:'shield',label:'SOLID OBSTACLE',value:'Elastic bounce'},
-    spikes:{icon:'damage',label:'SPIKE DAMAGE',value:h=>`Deals ${h.value} HP`},
-    medbay:{icon:'plus',label:'HEALING',value:h=>`Heals ${h.value} HP`},
-    pinball:{icon:'launch',label:'BUMPER FORCE',value:h=>`${h.value.toFixed(1)}× min speed`},
+    spikes:{icon:'damage',label:'SPIKE DAMAGE',value:(h:Hazard)=>`Deals ${h.value} HP`},
+    medbay:{icon:'plus',label:'HEALING',value:(h:Hazard)=>`Heals ${h.value} HP`},
+    pinball:{icon:'launch',label:'BUMPER FORCE',value:(h:Hazard)=>`${h.value.toFixed(1)}× min speed`},
   };
   layer.innerHTML=hazards.map(h=>{
     const info=detail[h.type],side=h.y<220?'below':h.y>500?'above':h.x<W/2?'right':'left';
@@ -157,9 +166,9 @@ function renderHazardTooltips(hazards){
   layer.hidden=!hazards.length;
 }
 
-function update(dt) {
+function update(dt:number):void {
   const s = state.sim;
-  if (!state.running || state.paused || s.finished) return;
+  if (!s||!state.running || state.paused || s.finished) return;
   if (s.hitStop > 0) { s.hitStop--; return; }
   s.ticks++;
   for (const e of s.echoes) { e.frames--; if(e.frames===0){const event={damage:e.damage,force:e.damage,echo:true};e.victim.hp-=event.damage;runBehaviorHook(e.victim,'takeHit',{sim:s,rival:e.attacker,event,random:s.rng,showImpact:impact,audioTone,audioHit});e.victim.flash=6;impact('ECHO!',e.victim);audioHit(.45);} }
@@ -170,9 +179,9 @@ function update(dt) {
     b.cooldown = Math.max(0,b.cooldown-1); b.weaponCooldown=Math.max(0,b.weaponCooldown-1);b.weaponWorldCooldown=Math.max(0,b.weaponWorldCooldown-1);b.fireCooldown=Math.max(0,b.fireCooldown-1); b.stunned = Math.max(0,b.stunned-1); b.flash = Math.max(0,b.flash-1);
     for(const id of Object.keys(b.hazardCooldowns))b.hazardCooldowns[id]=Math.max(0,b.hazardCooldowns[id]-1);
     if (b.burn > 0) { b.burn--; if (b.burn % 12 === 0) b.hp-=.18*(b.burnStacks||1);if(!b.burn)b.burnStacks=0; }
-    if(b.wallCrash?.frames>0)b.wallCrash.frames--;
-    const rival=s.balls.find(other=>other!==b);
-    const behaviorContext={sim:s,rival,event:{dt},random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
+    if(b.wallCrash&&b.wallCrash.frames>0)b.wallCrash.frames--;
+    const rival=s.balls.find(other=>other!==b)!;
+    const behaviorContext={sim:s,rival,event:{dt,force:0,damage:0},random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit};
     runBehaviorHook(b,'tick',behaviorContext);
     if (b.frozen || b.stunned) continue;
     runBehaviorHook(b,'beforeMove',behaviorContext);
@@ -181,22 +190,22 @@ function update(dt) {
     let hitWall=false;
     if (b.x-b.radius < ARENA_BOUNDS.left || b.x+b.radius > ARENA_BOUNDS.right) { b.x = Math.max(ARENA_BOUNDS.left+b.radius,Math.min(ARENA_BOUNDS.right-b.radius,b.x)); b.vx *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
     if (b.y-b.radius < ARENA_BOUNDS.top || b.y+b.radius > ARENA_BOUNDS.bottom) { b.y = Math.max(ARENA_BOUNDS.top+b.radius,Math.min(ARENA_BOUNDS.bottom-b.radius,b.y)); b.vy *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
-    if(hitWall&&b.wallCrash?.frames>0){b.hp-=b.wallCrash.damage;b.flash=8;b.wallCrash=null;impact('WALL SLAM!',b);audioHit(.9);}
+    if(hitWall&&b.wallCrash&&b.wallCrash.frames>0){b.hp-=b.wallCrash.damage;b.flash=8;b.wallCrash=null;impact('WALL SLAM!',b);audioHit(.9);}
     collideHazard(b, s);
     const weaponContact=collectWeaponWorldContact(b,ARENA_BOUNDS,s.hazards);
     if(weaponContact){impact('CLANG!',weaponContact);emitParticles(weaponContact,{count:7,color:'#f3efdf',speed:250,gravity:250});audioTone(310,.06,'square',.05);}
-    const shot=fireRangedWeapon(b,s);
-    if(shot){impact(shot.label,shot);emitParticles(shot,{count:b.f.weapon.projectiles??1,color:b.f.accent,speed:180,gravity:0});audioTone(b.f.weapon.type==='sniper'?95:135,.1,'square',.11);}
+    const shot=fireRangedWeapon(b,s),weapon=b.f.weapon;
+    if(shot&&weapon?.projectile){impact(shot.label,shot);emitParticles(shot,{count:weapon.projectiles??1,color:b.f.accent,speed:180,gravity:0});audioTone(weapon.type==='sniper'?95:135,.1,'square',.11);}
   }
   resolveProjectileHits(stepProjectiles(s,dt,ARENA_BOUNDS,s.hazards),s);
-  resolveWeaponHits(s.balls.map((ball,index)=>collectWeaponHit(ball,s.balls[1-index],dt)).filter(Boolean),s);
+  resolveWeaponHits(s.balls.map((ball,index)=>collectWeaponHit(ball,s.balls[1-index],dt)).filter((hit):hit is WeaponHit=>hit!==null),s);
   collideBalls(s);
   if (s.ticks > 60*24 && !s.finished) { const [a,b]=s.balls; a.hp -= 0.18; b.hp -= 0.18; }
   const outcome=resolveOutcome(s.balls[0],s.balls[1],{lastExchange:s.lastExchange,tick:s.ticks});
   if(outcome)finishFight(outcome.winner,outcome);
 }
 
-function resolveWeaponHits(hits,s){
+function resolveWeaponHits(hits:WeaponHit[],s:Simulation):void{
   if(!hits.length)return;
   const before={left:s.balls[0].hp,right:s.balls[1].hp};
   const prepared=hits.map(hit=>{
@@ -221,7 +230,7 @@ function resolveWeaponHits(hits,s){
   s.lastExchange={tick:s.ticks,source:'weapon exchange',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
 
-function resolveProjectileHits(hits,s){
+function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   if(!hits.length)return;
   const before={left:s.balls[0].hp,right:s.balls[1].hp};
   const prepared=hits.map(hit=>{
@@ -240,7 +249,7 @@ function resolveProjectileHits(hits,s){
   const [left,right]=s.balls;s.lastExchange={tick:s.ticks,source:'projectile volley',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
 
-function collideHazard(b,s) {
+function collideHazard(b:Ball,s:Simulation):void {
   for (const h of s.hazards) {
     const dx=b.x-h.x,dy=b.y-h.y,d=Math.hypot(dx,dy),min=b.radius+h.r;
     if (d<min && d>0) {
@@ -265,7 +274,7 @@ function collideHazard(b,s) {
   }
 }
 
-function collideBalls(s) {
+function collideBalls(s:Simulation):void {
   const [a,b]=s.balls;
   const collision=resolveElasticCollision(a,b);
   if(!collision)return;
@@ -296,14 +305,14 @@ function collideBalls(s) {
   }
 }
 
-function setDossier(side,f){
+function setDossier(side:Side,f:Fighter):void{
   const specs=f.specs.map(item=>`<div class="dossier-spec">${specIcon(item.icon)}<span><small>${item.label}</small><b>${item.value}</b></span></div>`).join('');
   $(side+'-dossier').innerHTML=`<strong>${f.ability}</strong><p>${f.desc}</p><div class="dossier-specs">${specs}</div><small class="core-stats">SPD ${Math.round(f.speed*100)} · PWR ${Math.round(f.power*100)} · MASS ${Math.round(f.mass*100)} · FORM ±10%</small>`;
   $(side+'-info').setAttribute('aria-label',`${f.name}: ${f.ability}. ${f.desc}`);
 }
 
-function finishFight(winner,resolution={mutualKo:false}) {
-  const s=state.sim; s.finished=true; state.running=false; state.result=winner;
+function finishFight(winner:Winner,resolution:Partial<Outcome>={mutualKo:false}):void {
+  const s=state.sim;if(!s)return;s.finished=true; state.running=false; state.result=winner;
   $('bet-title').hidden=true;$('fight-instruction').hidden=true;
   const bout=state.bouts[state.index],name=winner==='left'?bout.left.name:winner==='right'?bout.right.name:'DRAW';
   $('arena-stamp').textContent=winner==='draw'?'DEAD HEAT':`${name} WINS`; $('arena-stamp').classList.remove('hidden');
@@ -319,18 +328,18 @@ function finishFight(winner,resolution={mutualKo:false}) {
   audioTone(correct?520:100,.22,correct?'sine':'sawtooth',.15);
 }
 
-function renderCloseCall(result,bout){
+function renderCloseCall(result:Partial<Outcome>,bout:Bout):void{
   const box=$('result-breakdown');box.hidden=!result.mutualKo;$('result-card').classList.toggle('close-call',result.mutualKo);
   if(!result.mutualKo)return;
-  const hp=n=>`${n<0?'−':''}${Math.abs(n).toFixed(1)} HP`;
+  const hp=(n:number)=>`${n<0?'−':''}${Math.abs(n).toFixed(1)} HP`;
   $('result-copy').textContent='Both fighters dropped below zero HP.';
-  $('result-final-hp').textContent=`${bout.left.name} ${hp(result.leftHp)} / ${bout.right.name} ${hp(result.rightHp)}`;
-  $('result-margin').textContent=result.decidedBy==='overkillHp'?`${result.hpMargin.toFixed(1)} HP`:'DEAD-EVEN HP';
-  $('result-ruling').textContent=result.decidedBy.replace(/([A-Z])/g,' $1').toUpperCase();
+  $('result-final-hp').textContent=`${bout.left.name} ${hp(result.leftHp??0)} / ${bout.right.name} ${hp(result.rightHp??0)}`;
+  $('result-margin').textContent=result.decidedBy==='overkillHp'?`${(result.hpMargin??0).toFixed(1)} HP`:'DEAD-EVEN HP';
+  $('result-ruling').textContent=(result.decidedBy??'deadHeat').replace(/([A-Z])/g,' $1').toUpperCase();
 }
 
-function draw() {
-  const s=state.sim; ctx.clearRect(0,0,W,H); ctx.fillStyle='#d9d4c2'; ctx.fillRect(0,0,W,H);
+function draw():void {
+  const s=state.sim;if(!s)return;ctx.clearRect(0,0,W,H); ctx.fillStyle='#d9d4c2'; ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#777468'; ctx.globalAlpha=.27; ctx.lineWidth=1;
   for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();} for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();} ctx.globalAlpha=1;
   ctx.strokeStyle='#151515';ctx.lineWidth=8;ctx.strokeRect(24,76,W-48,H-100);
@@ -342,11 +351,11 @@ function draw() {
   if(state.paused){ctx.fillStyle='rgba(21,21,21,.68)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#e6ff34';ctx.font='48px Archivo Black';ctx.textAlign='center';ctx.fillText('FIGHT PAUSED',W/2,H/2);}
 }
 
-function drawProjectiles(projectiles){
+function drawProjectiles(projectiles:Projectile[]):void{
   for(const p of projectiles){ctx.save();ctx.strokeStyle=p.color;ctx.fillStyle=p.type==='sniper'?'#f3efdf':p.color;ctx.lineWidth=p.type==='sniper'?5:3;ctx.beginPath();ctx.moveTo(p.previousX,p.previousY);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
 }
 
-function drawEffectParticle(p){
+function drawEffectParticle(p:Particle):void{
   ctx.save();ctx.globalAlpha=Math.min(1,p.life/8);ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle=p.stroke??'#151515';ctx.lineWidth=1.5;
   const size=p.size??6;
   if(p.kind==='ice'){ctx.beginPath();ctx.moveTo(0,-size);ctx.lineTo(size*.55,size);ctx.lineTo(-size*.55,size*.45);ctx.closePath();ctx.fill();ctx.stroke();}
@@ -354,7 +363,7 @@ function drawEffectParticle(p){
   ctx.restore();
 }
 
-function drawHazards(hazards){
+function drawHazards(hazards:Hazard[]):void{
   for(const h of hazards){
     const type=h.type;
     ctx.save();ctx.translate(h.x,h.y);ctx.strokeStyle='#151515';ctx.lineWidth=6;
@@ -372,10 +381,10 @@ function drawHazards(hazards){
   }
 }
 
-function drawBall(b) {
+function drawBall(b:Ball):void {
   ctx.save();
   if(state.highlightedSide && state.highlightedSide!==b.side){ctx.filter='grayscale(1)';ctx.globalAlpha=.3;}
-  runBehaviorHook(b,'drawBack',{sim:state.sim,ctx});
+  runBehaviorHook(b,'drawBack',{sim:state.sim??undefined,ctx});
   ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(7,b.radius*.82,b.radius*.9,b.radius*.28,0,0,Math.PI*2);ctx.fill();ctx.restore();
   ctx.save();ctx.translate(b.x,b.y);if(b.flash)ctx.globalAlpha=b.flash%2?.35:1;
   ctx.fillStyle=b.f.color;ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,b.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
@@ -384,12 +393,12 @@ function drawBall(b) {
   ctx.restore();
   drawWeapon(ctx,b);
   drawFighterIcon(ctx,b.f.id,b.x,b.y,b.radius*.82);
-  if(b.burn>0){ctx.save();ctx.fillStyle='#ff6b1a';for(let i=0;i<5;i++){const a=(state.sim.ticks*.08+i*1.25),r=b.radius+10+(i%2)*7;ctx.beginPath();ctx.arc(b.x+Math.cos(a)*r,b.y+Math.sin(a)*r,4+i%2*2,0,Math.PI*2);ctx.fill();}ctx.restore();}
-  runBehaviorHook(b,'draw',{sim:state.sim,ctx});
+  if(b.burn>0){ctx.save();ctx.fillStyle='#ff6b1a';for(let i=0;i<5;i++){const a=((state.sim?.ticks??0)*.08+i*1.25),r=b.radius+10+(i%2)*7;ctx.beginPath();ctx.arc(b.x+Math.cos(a)*r,b.y+Math.sin(a)*r,4+i%2*2,0,Math.PI*2);ctx.fill();}ctx.restore();}
+  runBehaviorHook(b,'draw',{sim:state.sim??undefined,ctx});
   ctx.restore();
 }
 
-function drawImpactPopups(s){
+function drawImpactPopups(s:Simulation):void{
   const now=performance.now();
   s.impactPopups=s.impactPopups.filter(popup=>now-popup.born<650);
   for(const popup of s.impactPopups){
@@ -404,32 +413,32 @@ function drawImpactPopups(s){
   }
 }
 
-function updateHud(){ if(!state.sim)return; const [a,b]=state.sim.balls; const hpA=Math.max(0,Math.min(100,a.hp)),hpB=Math.max(0,Math.min(100,b.hp)); $('left-hp').style.width=`${hpA}%`; $('right-hp').style.width=`${hpB}%`; $('left-hp-text').textContent=Math.ceil(hpA); $('right-hp-text').textContent=Math.ceil(hpB); }
-function updatePips(){ document.querySelectorAll('#score-pips li').forEach((el,i)=>{el.className='';if(i<state.index)el.classList.add(state.bouts[i].outcome);else if(i===state.index)el.classList.add('active');}); }
-function impact(word,origin){
+function updateHud():void{ if(!state.sim)return; const [a,b]=state.sim.balls; const hpA=Math.max(0,Math.min(100,a.hp)),hpB=Math.max(0,Math.min(100,b.hp)); $('left-hp').style.width=`${hpA}%`; $('right-hp').style.width=`${hpB}%`; $('left-hp-text').textContent=String(Math.ceil(hpA)); $('right-hp-text').textContent=String(Math.ceil(hpB)); }
+function updatePips():void{ document.querySelectorAll<HTMLElement>('#score-pips li').forEach((el,i)=>{el.className='';if(i<state.index)el.classList.add(state.bouts[i].outcome??'');else if(i===state.index)el.classList.add('active');}); }
+function impact(word:string,origin:Point|Ball):void{
   const s=state.sim;if(!s)return;
   const x=Math.max(70,Math.min(W-70,origin?.x??W/2)),y=Math.max(115,Math.min(H-45,origin?.y??H/2));
   const index=s.impactPopups.length;
   s.impactPopups.push({word,x,y,born:performance.now(),size:word.length>12?24:word.length>8?29:36,rotation:(index%2?1:-1)*(.045+(index%3)*.025),color:word.includes('+')?'#ffffff':word.includes('−')?'#ff8c82':'#edff24'});
 }
 
-function emitParticles(origin,{count=10,color='#fff',speed=300,gravity=500,kind='spark',size=6}={}){
+function emitParticles(origin:Point|Ball,{count=10,color='#fff',speed=300,gravity=500,kind='spark',size=6}:ParticleOptions={}):void{
   const s=state.sim;if(!s||!origin)return;
   for(let i=0;i<count;i++){const angle=s.visualRng()*Math.PI*2,magnitude=speed*(.45+s.visualRng()*.75);s.particles.push({x:origin.x,y:origin.y,vx:Math.cos(angle)*magnitude,vy:Math.sin(angle)*magnitude,gravity,life:20+Math.floor(s.visualRng()*18),color,kind,size:size*(.65+s.visualRng()*.7),rotation:s.visualRng()*Math.PI*2,spin:(s.visualRng()-.5)*12,stroke:kind==='ice'?'#5caac0':null});}
 }
 
-let audioCtx;
-function audioTone(freq,duration,type='sine',volume=.1){if(!state.sound)return;audioCtx??=new AudioContext();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}
-function audioHit(power){if(!state.sound)return;audioTone(70+power*100,.07,'square',.03+power*.08);}
+let audioCtx:AudioContext|undefined;
+function audioTone(freq:number,duration:number,type:OscillatorType='sine',volume=.1):void{if(!state.sound)return;audioCtx??=new AudioContext();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}
+function audioHit(power:number):void{if(!state.sound)return;audioTone(70+power*100,.07,'square',.03+power*.08);}
 
-document.querySelectorAll('.pick-card').forEach(btn=>btn.addEventListener('click',()=>{if(state.running)return;state.selected=btn.dataset.pick;document.querySelectorAll('.pick-card').forEach(x=>x.classList.toggle('selected',x===btn));$('lock-pick').disabled=false;audioTone(260,.05,'square',.05);}));
-document.querySelectorAll('.pick-card').forEach(card=>{
-  card.addEventListener('pointerenter',()=>state.highlightedSide=card.dataset.pick);
+document.querySelectorAll<HTMLElement>('.pick-card').forEach(btn=>btn.addEventListener('click',()=>{if(state.running)return;state.selected=btn.dataset.pick as Side;document.querySelectorAll('.pick-card').forEach(x=>x.classList.toggle('selected',x===btn));$('lock-pick').disabled=false;audioTone(260,.05,'square',.05);}));
+document.querySelectorAll<HTMLElement>('.pick-card').forEach(card=>{
+  card.addEventListener('pointerenter',()=>state.highlightedSide=card.dataset.pick as Side);
   card.addEventListener('pointerleave',()=>state.highlightedSide=null);
-  card.addEventListener('focus',()=>state.highlightedSide=card.dataset.pick);
+  card.addEventListener('focus',()=>state.highlightedSide=card.dataset.pick as Side);
   card.addEventListener('blur',()=>state.highlightedSide=null);
 });
-['left','right'].forEach(side=>{
+(['left','right'] as Side[]).forEach(side=>{
   const trigger=$(side+'-info');
   trigger.addEventListener('pointerenter',()=>state.highlightedSide=side);
   trigger.addEventListener('pointerleave',()=>state.highlightedSide=null);
@@ -439,16 +448,16 @@ document.querySelectorAll('.pick-card').forEach(card=>{
 $('lock-pick').addEventListener('click',startFight);
 $('global-pause').addEventListener('click',()=>{if(!state.running)return;state.paused=!state.paused;$('global-pause').classList.toggle('active',state.paused);$('global-pause').textContent=state.paused?'▶ RESUME FIGHT':'Ⅱ PAUSE FIGHT';});
 $('sound-toggle').addEventListener('click',()=>{state.sound=!state.sound;$('sound-toggle').textContent=`SOUND ${state.sound?'ON':'OFF'}`;if(state.sound)audioTone(420,.06,'sine',.05);});
-function setTheme(theme,{persist=true}={}){
+function setTheme(theme:'light'|'dark',{persist=true}:{persist?:boolean}={}):void{
   const dark=theme==='dark';
   document.documentElement.dataset.theme=dark?'dark':'light';
   $('theme-toggle').textContent=dark?'LIGHT MODE':'DARK MODE';
   $('theme-toggle').setAttribute('aria-pressed',String(dark));
-  document.querySelector('meta[name="theme-color"]').content=dark?'#151515':'#f3efdf';
+  (document.querySelector('meta[name="theme-color"]') as HTMLMetaElement).content=dark?'#151515':'#f3efdf';
   if(persist)try{localStorage.setItem('random-arena-theme',dark?'dark':'light');}catch{}
 }
-let savedTheme='light';
-try{savedTheme=localStorage.getItem('random-arena-theme')||'light';}catch{}
+let savedTheme:'light'|'dark'='light';
+try{savedTheme=localStorage.getItem('random-arena-theme')==='dark'?'dark':'light';}catch{}
 setTheme(savedTheme,{persist:false});
 $('theme-toggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('next-bout').addEventListener('click',()=>{
@@ -458,11 +467,11 @@ $('next-bout').addEventListener('click',()=>{
   if(state.index<4){state.index++;setupBout();}else{state.cardComplete=true;showFinal();}
 });
 
-document.querySelectorAll('[data-route]').forEach(link=>link.addEventListener('click',event=>{
-  event.preventDefault();setMode(link.dataset.route);
+document.querySelectorAll<HTMLElement>('[data-route]').forEach(link=>link.addEventListener('click',event=>{
+  event.preventDefault();setMode(link.dataset.route as GameMode);
 }));
 
-async function copyText(text,button){
+async function copyText(text:string,button:HTMLElement):Promise<void>{
   try{await navigator.clipboard.writeText(text);const previous=button.textContent;button.textContent='COPIED';setTimeout(()=>button.textContent=previous,1100);}
   catch{const input=$('seed-input');input.select();document.execCommand('copy');}
 }
@@ -478,7 +487,7 @@ addEventListener('popstate',()=>{
 
 function showFinal(){const perfect=state.wins===5;$('result-title').textContent=perfect?'PERFECT 5 / 5':'CARD COMPLETE';$('result-copy').textContent=perfect?'Untouched. Unbeaten. Run the same seed again or start a new card.':`Final record: ${state.wins}—${state.losses}. ${state.mode==='daily'?'Come back tomorrow for five new fights.':'Try a new seed or replay this card.'}`;$('next-bout').textContent='REPLAY CARD →';}
 
-function loop(t){if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000)*state.simulationSpeed;state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
+function loop(t:number):void{if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000)*state.simulationSpeed;state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
 
 for(const select of [$('versus-left'),$('versus-right')])select.innerHTML=fighters.map(f=>`<option value="${f.id}">${f.name} — ${f.ability}</option>`).join('');
 const localHostnames=new Set(['localhost','127.0.0.1','[::1]','0.0.0.0']);
@@ -488,6 +497,6 @@ for(const select of [$('versus-left'),$('versus-right')])select.addEventListener
   setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});
 });
 $('start-versus').addEventListener('click',()=>{setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});startFight();});
-$('simulation-speed').addEventListener('change',event=>{state.simulationSpeed=Number(event.target.value)||1;state.accumulator=0;});
+$('simulation-speed').addEventListener('change',event=>{state.simulationSpeed=Number((event.target as HTMLSelectElement).value)||1;state.accumulator=0;});
 const initialParams=new URLSearchParams(location.search),initialMode=location.pathname.startsWith('/versus')?'versus':location.pathname.startsWith('/endless')?'endless':'daily';
 setMode(initialMode,initialParams.get('seed'),{push:false,left:initialParams.get('left'),right:initialParams.get('right')});requestAnimationFrame(loop);

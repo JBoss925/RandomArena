@@ -1,4 +1,4 @@
-const paths={
+const paths:Record<string,string>={
   shield:'<path d="M12 3 5 6v5c0 4.5 2.8 7.8 7 10 4.2-2.2 7-5.5 7-10V6z"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',heart:'<path d="M20 8c0 6-8 11-8 11S4 14 4 8c0-5 6-6 8-2 2-4 8-3 8 2Z"/>',
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/>',bolt:'<path d="m14 2-9 12h6l-1 8 9-13h-6z"/>',
@@ -14,4 +14,4 @@ const paths={
   rotate:'<path d="M20 8a9 9 0 1 0 1 7M20 3v5h-5"/>',bat:'<path d="M17 3c4 2 4 5 2 8L9 21c-2 2-5 1-6-1s0-4 2-6L15 4z"/>',launch:'<path d="M3 12h15M13 6l6 6-6 6"/>',
 };
 
-export function specIcon(name){return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]??paths.impact}</svg>`;}
+export function specIcon(name:string):string{return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]??paths.impact}</svg>`;}

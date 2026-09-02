@@ -1,6 +1,6 @@
 // Resolve knockouts from simulation state only. Mutual knockouts use transparent,
 // deterministic performance tiebreakers and never fall back to random chance.
-export function resolveOutcome(left,right,{lastExchange=null,tick=0}={}){
+export function resolveOutcome(left: Ball,right: Ball,{lastExchange=null,tick=0}:{lastExchange?:Exchange|null;tick?:number}={}):Outcome|null{
   const leftOut=left.hp<=0,rightOut=right.hp<=0;
   if(!leftOut&&!rightOut)return null;
   if(leftOut!==rightOut)return{winner:leftOut?'right':'left',mutualKo:false,decidedBy:'knockout'};
@@ -20,3 +20,4 @@ export function resolveOutcome(left,right,{lastExchange=null,tick=0}={}){
   if(left.hits!==right.hits)return{...base,winner:left.hits>right.hits?'left':'right',decidedBy:'landedHits'};
   return{...base,winner:'draw',decidedBy:'deadHeat'};
 }
+import type { Ball, Exchange, Outcome } from './types';

@@ -4,6 +4,6 @@ export const combatConfig={
   maximumContactDamage:18,
 };
 
-export function contactForce(relativeNormalSpeed){
+export function contactForce(relativeNormalSpeed:number):number{
   return Math.min(combatConfig.maximumContactDamage,combatConfig.baseContactDamage+Math.abs(relativeNormalSpeed)/combatConfig.relativeSpeedDivisor);
 }

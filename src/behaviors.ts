@@ -1,6 +1,6 @@
 // Fighter kits are small, composable hook scripts. The engine owns universal
 // movement and damage; a roster entry opts into any combination of these kits.
-export const behaviors={
+export const behaviors:Record<string,Behavior>={
   wallCharge:{
     wallHit({ball}){ball.voltCharge=Math.min(5,(ball.voltCharge??0)+1);const previous=ball.wallBoost;ball.wallBoost=Math.min(1.42,ball.wallBoost*1.025);const gain=ball.wallBoost/previous;ball.vx*=gain;ball.vy*=gain;},
     modifyOutgoing({ball,event}){const charge=ball.voltCharge??0;if(charge){event.damage+=charge*1.3;event.voltRelease=charge;}},
@@ -8,9 +8,9 @@ export const behaviors={
     draw({ball,ctx}){const charge=ball.voltCharge??0;if(!charge)return;ctx.save();ctx.strokeStyle='#e5ff00';ctx.lineWidth=3;for(let i=0;i<charge;i++){const a=i*Math.PI*2/charge+ball.angle,r=ball.radius+10;ctx.beginPath();ctx.moveTo(ball.x+Math.cos(a)*r,ball.y+Math.sin(a)*r);ctx.lineTo(ball.x+Math.cos(a+.17)*(r+10),ball.y+Math.sin(a+.17)*(r+10));ctx.stroke();}ctx.restore();},
   },
   armor:{
-    tick({ball}){ball.armorPlates??=3;if(ball.armorPlates===0&&ball.armorRepair>0&&!--ball.armorRepair)ball.armorPlates=3;},
+    tick({ball}){ball.armorPlates??=3;if(ball.armorPlates===0&&(ball.armorRepair??0)>0){ball.armorRepair=(ball.armorRepair??0)-1;if(ball.armorRepair===0)ball.armorPlates=3;}},
     modifyIncoming({ball,event}){ball.armorPlates??=3;if(ball.armorPlates>0)event.damage*=.74;},
-    takeHit({ball,event,showImpact}){if(event.damage<=0||ball.armorPlates<=0)return;if(!--ball.armorPlates){ball.armorRepair=180;showImpact('ARMOR BREAK!',ball);}},
+    takeHit({ball,event,showImpact}){if(event.damage<=0||(ball.armorPlates??0)<=0)return;ball.armorPlates=(ball.armorPlates??0)-1;if(ball.armorPlates===0){ball.armorRepair=180;showImpact('ARMOR BREAK!',ball);}},
     draw({ball,ctx}){const plates=ball.armorPlates??3;ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=5;for(let i=0;i<plates;i++){const a=-Math.PI*.82+i*Math.PI*.32;ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius-7,a,a+.25);ctx.stroke();}ctx.restore();},
   },
   regeneration:{
@@ -28,7 +28,7 @@ export const behaviors={
     draw({ball,ctx}){if(ball.hp>=50)return;ctx.save();ctx.strokeStyle='#a4a4a4';ctx.lineWidth=3;ctx.setLineDash([3,7]);ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+12,0,Math.PI*2);ctx.stroke();ctx.restore();},
   },
   bubbleShield:{
-    tick({ball}){if(ball.bubbleShield===undefined)ball.bubbleShield=true;if(!ball.bubbleShield&&ball.bubbleRecharge>0&&!--ball.bubbleRecharge)ball.bubbleShield=true;},
+    tick({ball}){if(ball.bubbleShield===undefined)ball.bubbleShield=true;if(!ball.bubbleShield&&(ball.bubbleRecharge??0)>0){ball.bubbleRecharge=(ball.bubbleRecharge??0)-1;if(ball.bubbleRecharge===0)ball.bubbleShield=true;}},
     modifyIncoming({ball,event}){if(ball.bubbleShield){event.damage=0;event.bubblePop=true;ball.bubbleShield=false;ball.bubbleRecharge=240;}},
     takeHit({ball,rival,event,showImpact}){if(!event.bubblePop)return;rival.vx*=-1.35;rival.vy*=-1.35;showImpact('POP!',ball);},
     draw({ball,ctx}){if(!ball.bubbleShield)return;ctx.save();ctx.fillStyle='rgba(255,255,255,.13)';ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+10,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();},
@@ -39,7 +39,7 @@ export const behaviors={
   },
   blink:{
     tick({ball,sim,rival,showImpact}){ball.phaseFrames=Math.max(0,(ball.phaseFrames??0)-1);if(sim.ticks%210)return;const speed=Math.hypot(rival.vx,rival.vy)||1,nx=rival.vx/speed,ny=rival.vy/speed,gap=ball.radius+rival.radius+24;ball.x=Math.max(ball.radius+30,Math.min(sim.width-ball.radius-30,rival.x-nx*gap));ball.y=Math.max(ball.radius+82,Math.min(sim.height-ball.radius-30,rival.y-ny*gap));ball.phaseFrames=60;showImpact('BACKDOOR!',ball);},
-    modifyOutgoing({ball,event}){if(ball.phaseFrames>0){event.damage+=12;event.phaseStrike=true;}},
+    modifyOutgoing({ball,event}){if((ball.phaseFrames??0)>0){event.damage+=12;event.phaseStrike=true;}},
     dealHit({ball,rival,event,showImpact}){if(event.phaseStrike){ball.phaseFrames=0;showImpact('DESYNC!',rival);}},
     draw({ball,ctx}){if(!ball.phaseFrames)return;ctx.save();ctx.globalAlpha=.35;ctx.strokeStyle=ball.f.color;ctx.lineWidth=4;for(let i=1;i<=3;i++)ctx.strokeRect(ball.x-ball.radius+i*5,ball.y-ball.radius-i*4,ball.radius*2,ball.radius*2);ctx.restore();},
   },
@@ -54,7 +54,7 @@ export const behaviors={
   echo:{dealHit({ball,sim,rival,event,showImpact}){if(event.damage<=0||event.echo)return;sim.echoes.push({attacker:ball,victim:rival,frames:14,damage:event.damage*.35},{attacker:ball,victim:rival,frames:32,damage:event.damage*.3});showImpact('REVERB!',rival);}},
   thirdHitBlock:{
     modifyIncoming({ball,event}){if(ball.incoming%3===0&&!event.unblockable){event.blockedDamage=event.damage;event.damage=0;event.rookBlock=true;}},
-    takeHit({ball,rival,event,showImpact}){if(!event.rookBlock)return;rival.hp-=event.blockedDamage*.3;rival.vx*=-1.08;rival.vy*=-1.08;rival.stunned+=10;showImpact('PARRY!',ball);},
+    takeHit({ball,rival,event,showImpact}){if(!event.rookBlock)return;rival.hp-=(event.blockedDamage??0)*.3;rival.vx*=-1.08;rival.vy*=-1.08;rival.stunned+=10;showImpact('PARRY!',ball);},
     draw({ball,ctx}){const remaining=3-(ball.incoming%3);ctx.save();for(let i=0;i<3;i++){const a=-Math.PI*.78+i*Math.PI*.28,x=ball.x+Math.cos(a)*(ball.radius+17),y=ball.y+Math.sin(a)*(ball.radius+17);ctx.beginPath();ctx.arc(x,y,7,0,Math.PI*2);ctx.fillStyle=i<remaining?'#fff':'#6f6c64';ctx.fill();ctx.strokeStyle='#151515';ctx.lineWidth=2;ctx.stroke();}ctx.restore();},
   },
   continuousAcceleration:{
@@ -80,8 +80,11 @@ export const behaviors={
   bladeTempo:{dealHit({ball,event,showImpact}){if(!event.weapon||event.projectile)return;ball.angularVelocity=-Math.sign(ball.angularVelocity||1)*Math.min(4.5,Math.abs(ball.angularVelocity)*1.09);showImpact('RIPOSTE!',ball);}},
   slugger:{dealHit({rival,event,showImpact}){if(!event.weapon)return;rival.wallCrash={frames:90,damage:12};showImpact('DEEP!',rival);}},
   randomSteering:{beforeMove({ball,random}){ball.vx+=(random()-.5)*20;ball.vy+=(random()-.5)*20;}},
-  combatPull:{beforeMove({ball,rival,event}){const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1;ball.vx+=dx/d*90*event.dt;ball.vy+=dy/d*90*event.dt;}},
+  combatPull:{beforeMove({ball,rival,event}){const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,dt=event.dt??0;ball.vx+=dx/d*90*dt;ball.vy+=dy/d*90*dt;}},
   speedLimit:{beforeMove({ball}){const max=255*ball.f.speed*ball.wallBoost,speed=Math.hypot(ball.vx,ball.vy);if(speed>max){ball.vx*=max/speed;ball.vy*=max/speed;}}},
 };
 
-export function runBehaviorHook(ball,hook,context){for(const name of ball.f.behaviors??[])behaviors[name]?.[hook]?.({...context,ball});}
+export function runBehaviorHook(ball:Ball,hook:BehaviorHook,context:Partial<Omit<BehaviorContext,'ball'>>):void{
+  for(const name of ball.f.behaviors??[])behaviors[name]?.[hook]?.({...context,ball} as BehaviorContext);
+}
+import type { Ball, Behavior, BehaviorContext, BehaviorHook } from './types';

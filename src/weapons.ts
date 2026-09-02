@@ -1,6 +1,6 @@
 // Data-driven rotating attachments. Add a `weapon` object to any fighter to
 // compose one onto that ball without changing the physics or combat engine.
-export function collectWeaponHit(ball, rival, dt) {
+export function collectWeaponHit(ball:Ball, rival:Ball, _dt:number):WeaponHit|null {
   const weapon = ball.f.weapon;
   if (!weapon || weapon.projectile || ball.frozen || ball.stunned) return null;
   if (ball.weaponCooldown > 0) return null;
@@ -32,14 +32,14 @@ export function collectWeaponHit(ball, rival, dt) {
     redirect: weapon.type==='bat'?{
       x:impulseDirection.x,
       y:impulseDirection.y,
-      minimumSpeed:weapon.minimumLaunchSpeed,
-      speedMultiplier:weapon.speedMultiplier,
+      minimumSpeed:weapon.minimumLaunchSpeed??0,
+      speedMultiplier:weapon.speedMultiplier??1,
     }:null,
     label: weapon.type === 'bat' ? 'KNOCK!' : 'SLASH!',
   };
 }
 
-export function applyWeaponMotion(hit){
+export function applyWeaponMotion(hit:Pick<WeaponHit,'attacker'|'victim'|'impulseX'|'impulseY'|'redirect'>):void{
   const {attacker,victim}=hit;
   const victimMass=victim.mass??victim.f.mass,attackerMass=attacker.mass??attacker.f.mass;
   if(hit.redirect){
@@ -52,13 +52,13 @@ export function applyWeaponMotion(hit){
   attacker.vx-=hit.impulseX/attackerMass*.18;attacker.vy-=hit.impulseY/attackerMass*.18;
 }
 
-export function collectWeaponWorldContact(ball,bounds,hazards=[]){
+export function collectWeaponWorldContact(ball:Ball,bounds:Bounds,hazards:Hazard[]=[]):(Point&{kind:'wall'|'hazard';normalX?:number;normalY?:number})|null{
   const weapon=ball.f.weapon;
   if(!weapon||ball.weaponWorldCooldown>0)return null;
   const dx=Math.cos(ball.angle),dy=Math.sin(ball.angle);
   const start={x:ball.x+dx*ball.radius*.55,y:ball.y+dy*ball.radius*.55};
   const end={x:ball.x+dx*(ball.radius+weapon.length),y:ball.y+dy*(ball.radius+weapon.length)};
-  let contact=null;
+  let contact:(Point&{kind:'wall'|'hazard';normalX?:number;normalY?:number})|null=null;
   const hitsLeft=end.x<bounds.left,hitsRight=end.x>bounds.right,hitsTop=end.y<bounds.top,hitsBottom=end.y>bounds.bottom;
   if(hitsLeft||hitsRight||hitsTop||hitsBottom){
     if((hitsLeft&&ball.vx<0)||(hitsRight&&ball.vx>0))ball.vx*=-1;
@@ -81,7 +81,7 @@ export function collectWeaponWorldContact(ball,bounds,hazards=[]){
   return contact;
 }
 
-export function drawWeapon(ctx, ball) {
+export function drawWeapon(ctx:CanvasRenderingContext2D, ball:Ball):void {
   const weapon = ball.f.weapon;
   if (!weapon) return;
   ctx.save();
@@ -119,14 +119,15 @@ export function drawWeapon(ctx, ball) {
   ctx.restore();
 }
 
-function pointSegmentDistance(px, py, ax, ay, bx, by) {
+function pointSegmentDistance(px:number, py:number, ax:number, ay:number, bx:number, by:number):number {
   return pointSegmentClosest(px,py,ax,ay,bx,by).distance;
 }
 
-function pointSegmentClosest(px,py,ax,ay,bx,by){
+function pointSegmentClosest(px:number,py:number,ax:number,ay:number,bx:number,by:number):Point&{distance:number}{
   const abX = bx - ax, abY = by - ay;
   const lengthSquared = abX * abX + abY * abY;
   const t = lengthSquared ? Math.max(0, Math.min(1, ((px - ax) * abX + (py - ay) * abY) / lengthSquared)) : 0;
   const x=ax+abX*t,y=ay+abY*t;
   return {x,y,distance:Math.hypot(px-x,py-y)};
 }
+import type { Ball, Bounds, Hazard, Point, WeaponHit } from './types';

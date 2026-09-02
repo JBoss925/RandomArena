@@ -1,4 +1,8 @@
-export function fireRangedWeapon(ball,sim){
+import type { Ball, Bounds, Hazard, Point, ProjectileHit, Simulation } from './types';
+
+type SegmentHit = Point & { t:number; type?:'world'|'fighter'; target?:Ball };
+
+export function fireRangedWeapon(ball:Ball,sim:Simulation):({label:string}&Point)|null{
   const weapon=ball.f.weapon;
   if(!weapon?.projectile||ball.frozen||ball.stunned||ball.fireCooldown>0)return null;
   ball.fireCooldown=weapon.fireInterval;
@@ -13,12 +17,12 @@ export function fireRangedWeapon(ball,sim){
   return{...muzzle,label:weapon.fireLabel??'FIRE!'};
 }
 
-export function stepProjectiles(sim,dt,bounds,hazards=[]){
-  const hits=[];
+export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:number,bounds:Bounds,hazards:Hazard[]=[]):ProjectileHit[]{
+  const hits:ProjectileHit[]=[];
   for(const projectile of sim.projectiles){
     const from={x:projectile.x,y:projectile.y},to={x:projectile.x+projectile.vx*dt,y:projectile.y+projectile.vy*dt};
     projectile.previousX=from.x;projectile.previousY=from.y;
-    let first=boundaryHit(from,to,bounds,projectile.radius);
+    let first:SegmentHit|null=boundaryHit(from,to,bounds,projectile.radius);
     for(const hazard of hazards){
       const hit=segmentCircleHit(from,to,hazard.x,hazard.y,hazard.r+projectile.radius);
       if(hit&&(!first||hit.t<first.t))first={...hit,type:'world'};
@@ -30,14 +34,14 @@ export function stepProjectiles(sim,dt,bounds,hazards=[]){
     }
     if(first){
       projectile.x=first.x;projectile.y=first.y;projectile.dead=true;
-      if(first.type==='fighter')hits.push({projectile,target:first.target,x:first.x,y:first.y});
+      if(first.type==='fighter'&&first.target)hits.push({projectile,target:first.target,x:first.x,y:first.y});
     }else{projectile.x=to.x;projectile.y=to.y;projectile.life--;if(projectile.life<=0)projectile.dead=true;}
   }
   sim.projectiles=sim.projectiles.filter(projectile=>!projectile.dead);
   return hits;
 }
 
-function segmentCircleHit(from,to,cx,cy,radius){
+function segmentCircleHit(from:Point,to:Point,cx:number,cy:number,radius:number):SegmentHit|null{
   const dx=to.x-from.x,dy=to.y-from.y,fx=from.x-cx,fy=from.y-cy;
   const a=dx*dx+dy*dy,b=2*(fx*dx+fy*dy),c=fx*fx+fy*fy-radius*radius;
   if(c<=0)return{t:0,x:from.x,y:from.y};
@@ -47,10 +51,10 @@ function segmentCircleHit(from,to,cx,cy,radius){
   return t===null?null:{t,x:from.x+dx*t,y:from.y+dy*t};
 }
 
-function boundaryHit(from,to,bounds,radius){
+function boundaryHit(from:Point,to:Point,bounds:Bounds,radius:number):SegmentHit|null{
   if(from.x<bounds.left+radius||from.x>bounds.right-radius||from.y<bounds.top+radius||from.y>bounds.bottom-radius)return{t:0,x:from.x,y:from.y,type:'world'};
-  let best=null;
-  const candidates=[];
+  let best:SegmentHit|null=null;
+  const candidates:number[]=[];
   if(to.x<bounds.left+radius)candidates.push((bounds.left+radius-from.x)/(to.x-from.x));
   if(to.x>bounds.right-radius)candidates.push((bounds.right-radius-from.x)/(to.x-from.x));
   if(to.y<bounds.top+radius)candidates.push((bounds.top+radius-from.y)/(to.y-from.y));
