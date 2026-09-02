@@ -75,6 +75,10 @@ canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
 .hp-track { border: 2px solid var(--ink); background: var(--paper); height: 10px; box-shadow: 2px 2px 0 var(--ink); }
 .hp-track i { display: block; width: 100%; height: 100%; background: var(--red); transform-origin: left; transition: width .08s linear; }
 .right .hp-track i { background: var(--blue); transform-origin: right; margin-left: auto; }
+.speed-control { display: flex; align-items: center; align-self: stretch; border-left: 2px solid var(--ink); border-right: 2px solid var(--ink); }
+.speed-control span { padding: 0 9px; font: 8px "IBM Plex Mono"; letter-spacing: .1em; }
+.speed-control select { align-self: stretch; padding: 0 26px 0 10px; border: 0; border-left: 2px solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font: 11px "Archivo Black"; cursor: pointer; }
+.speed-control select:focus-visible { outline: 3px solid var(--acid); outline-offset: -3px; }
 .controls { min-height: 48px; display: flex; align-items: stretch; border-top: 3px solid var(--ink); }
 .controls button { background: transparent; border: 0; border-right: 2px solid var(--ink); padding: 0 16px; font-size: 9px; font-weight: 600; }
 .controls button:hover, .controls button.active { background: var(--acid); }

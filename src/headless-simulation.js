@@ -14,7 +14,7 @@ export function simulateMatch(leftFighter,rightFighter,seed,{maxTicks=60*40}={})
   for(let tick=0;tick<maxTicks;tick++){
     if(sim.hitStop>0){sim.hitStop--;continue;}
     sim.ticks++;
-    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0)echo.victim.hp-=echo.damage;}
+    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0){const event={damage:echo.damage,force:echo.damage,echo:true};echo.victim.hp-=event.damage;runBehaviorHook(echo.victim,'takeHit',{...ctx(sim,echo.attacker,event),rival:echo.attacker});}}
     sim.echoes=sim.echoes.filter(e=>e.frames>0);
     for(const ball of sim.balls){
       ball.cooldown=Math.max(0,ball.cooldown-1);ball.weaponCooldown=Math.max(0,ball.weaponCooldown-1);ball.stunned=Math.max(0,ball.stunned-1);ball.flash=Math.max(0,ball.flash-1);
@@ -42,7 +42,7 @@ export function simulateMatch(leftFighter,rightFighter,seed,{maxTicks=60*40}={})
 function resolveBodyHit(sim){
   const [a,b]=sim.balls,collision=resolveElasticCollision(a,b);if(!collision||a.cooldown||b.cooldown)return;
   const force=contactForce(collision.relativeNormalSpeed);a.cooldown=b.cooldown=9;a.stunned=b.stunned=Math.round(3+force*.45);sim.hitStop=Math.round(2+force*.32);
-  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale}],sim,'body collision');
+  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)}],sim,'body collision');
 }
 
 function resolveWeaponHits(hits,sim){

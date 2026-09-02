@@ -16,7 +16,7 @@ const W = canvas.width, H = canvas.height;
 const STEP = 1 / 60;
 const ARENA_BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const BUMPER_REFERENCE_SPEED=650;
-const state = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
+const state = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
 
 function localDateKey() {
   const d = new Date();
@@ -143,7 +143,7 @@ function update(dt) {
   if (!state.running || state.paused || s.finished) return;
   if (s.hitStop > 0) { s.hitStop--; return; }
   s.ticks++;
-  for (const e of s.echoes) { e.frames--; if(e.frames===0){e.victim.hp=Math.max(0,e.victim.hp-e.damage);e.victim.flash=6;impact('ECHO!',e.victim);audioHit(.45);} }
+  for (const e of s.echoes) { e.frames--; if(e.frames===0){const event={damage:e.damage,force:e.damage,echo:true};e.victim.hp-=event.damage;runBehaviorHook(e.victim,'takeHit',{sim:s,rival:e.attacker,event,random:s.rng,showImpact:impact,audioTone,audioHit});e.victim.flash=6;impact('ECHO!',e.victim);audioHit(.45);} }
   s.echoes=s.echoes.filter(e=>e.frames>0);
   for (const p of s.particles) { p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 500*dt; p.life--; }
   s.particles = s.particles.filter(p => p.life > 0);
@@ -233,8 +233,8 @@ function collideBalls(s) {
     const before={left:a.hp,right:b.hp};
     const force=contactForce(rel);
     a.hits++; b.incoming++; b.hits++; a.incoming++;
-    const eventA={force,damage:force*a.f.power*a.powerScale};
-    const eventB={force,damage:force*b.f.power*b.powerScale};
+    const eventA={force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)};
+    const eventB={force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)};
     const contextA={sim:s,rival:b,event:eventA,random:s.rng,showImpact:impact,audioTone,audioHit};
     const contextB={sim:s,rival:a,event:eventB,random:s.rng,showImpact:impact,audioTone,audioHit};
     s.hitStop=Math.round(2+force*.32);
@@ -411,7 +411,7 @@ addEventListener('popstate',()=>{
 
 function showFinal(){const perfect=state.wins===5;$('result-title').textContent=perfect?'PERFECT 5 / 5':'CARD COMPLETE';$('result-copy').textContent=perfect?'Untouched. Unbeaten. Run the same seed again or start a new card.':`Final record: ${state.wins}—${state.losses}. ${state.mode==='daily'?'Come back tomorrow for five new fights.':'Try a new seed or replay this card.'}`;$('next-bout').textContent='REPLAY CARD →';}
 
-function loop(t){if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000);state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
+function loop(t){if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000)*state.simulationSpeed;state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
 
 for(const select of [$('versus-left'),$('versus-right')])select.innerHTML=fighters.map(f=>`<option value="${f.id}">${f.name} — ${f.ability}</option>`).join('');
 for(const select of [$('versus-left'),$('versus-right')])select.addEventListener('change',()=>{
@@ -419,5 +419,6 @@ for(const select of [$('versus-left'),$('versus-right')])select.addEventListener
   setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});
 });
 $('start-versus').addEventListener('click',()=>{setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});startFight();});
+$('simulation-speed').addEventListener('change',event=>{state.simulationSpeed=Number(event.target.value)||1;state.accumulator=0;});
 const initialParams=new URLSearchParams(location.search),initialMode=location.pathname.startsWith('/versus')?'versus':location.pathname.startsWith('/endless')?'endless':'daily';
 setMode(initialMode,initialParams.get('seed'),{push:false,left:initialParams.get('left'),right:initialParams.get('right')});requestAnimationFrame(loop);
