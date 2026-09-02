@@ -172,6 +172,12 @@ canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
 .result-card { margin: 18px; padding: 18px; border: 3px solid var(--ink); background: var(--acid); color: #151515; box-shadow: 6px 6px 0 var(--ink); }
 .result-card.loss { background: var(--red); }
 .result-card.close-call { background: #f6b817; }
+html[data-theme="dark"] .result-card.loss:not(.close-call) {
+  background: #f3efdf;
+  color: #151515;
+  border-color: #fff;
+  box-shadow: 6px 6px 0 var(--red);
+}
 .result-card strong { display: block; font: 31px "Archivo Black"; }
 .result-card p { font-size: 10px; line-height: 1.5; }
 .result-card button { width: 100%; margin: 8px 0 0; border-color: #151515; background: #151515; color: #fff; box-shadow: none; }
