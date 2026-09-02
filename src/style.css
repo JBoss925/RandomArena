@@ -155,7 +155,7 @@ canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
 .hazard-tooltip small { display: block; margin: 0 0 2px; font: 6px "IBM Plex Mono"; letter-spacing: .05em; text-transform: uppercase; }
 .hazard-tooltip b { display: block; font: 9px "Archivo Black"; }
 @keyframes hazard-prompt { 70%,100% { box-shadow: 0 0 0 13px rgba(230,255,52,0); } }
-.arena-stamp { position: absolute; z-index: 30; left: 50%; top: 50%; translate: -50% -50%; padding: 10px 15px; border: 3px solid var(--ink); background: var(--acid); color: #151515; font-family: "Archivo Black"; font-size: clamp(14px, 2vw, 24px); transform: rotate(-2deg); box-shadow: 5px 5px 0 var(--ink); pointer-events: none; }
+.arena-stamp { position: absolute; z-index: 30; left: 50%; top: 50%; padding: 10px 15px; border: 3px solid var(--ink); background: var(--acid); color: #151515; font-family: "Archivo Black"; font-size: clamp(14px, 2vw, 24px); transform: translate(-50%,-50%) rotate(-2deg); box-shadow: 5px 5px 0 var(--ink); pointer-events: none; }
 .arena-stamp.hidden { display: none; }
 .hp-row { position: absolute; z-index: 4; left: 18px; right: 18px; top: 16px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 18%; pointer-events: none; }
 .hp-block { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; font: 600 10px "IBM Plex Mono"; color: var(--ink); }
