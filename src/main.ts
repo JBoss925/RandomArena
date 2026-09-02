@@ -9,7 +9,7 @@ import { createInitialBall } from './initial-conditions.js';
 import { contactForce } from './combat-config.js';
 import { specIcon } from './spec-icons.js';
 import { resolveOutcome } from './outcome.js';
-import { playSound as playLibrarySound, preloadSounds } from './sounds.js';
+import { SOUND_OUTPUT_GAIN, playSound as playLibrarySound, preloadSounds } from './sounds.js';
 import { contactFeedback, hazardMaterial, type ContactFeedback } from './materials.js';
 import {contrastForeground} from './color-contrast.js';
 import type { BalanceMatch, BalanceRanking, BalanceReport, Ball, Bout, Fighter, Hazard, HazardType, Material, Outcome, Particle, ParticleOptions, Point, Projectile, ProjectileHit, Side, Simulation, SoundCue, SoundCueOptions, WeaponHit, Winner } from './types';
@@ -29,11 +29,11 @@ const BUMPER_REFERENCE_SPEED=650;
 type GameMode='daily'|'endless'|'versus';
 type AppState={date:string;mode:GameMode;seed:string;versusLeft:string;versusRight:string;bouts:Bout[];index:number;selected:Side|null;highlightedSide:Side|null;running:boolean;paused:boolean;replaying:boolean;simulationSpeed:number;result:Winner|null;wins:number;losses:number;cardComplete:boolean;soundVolume:number;lastAudibleVolume:number;sim:Simulation|null;accumulator:number;lastTime:number};
 const initialSoundVolume=readStoredSoundVolume();
-const state:AppState = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, replaying:false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, soundVolume:initialSoundVolume, lastAudibleVolume:initialSoundVolume||1, sim: null, accumulator: 0, lastTime: 0 };
+const state:AppState = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, replaying:false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, soundVolume:initialSoundVolume, lastAudibleVolume:initialSoundVolume||.5, sim: null, accumulator: 0, lastTime: 0 };
 
 function readStoredSoundVolume():number{
   try{const stored=localStorage.getItem('random-arena-volume');if(stored!==null){const value=Number(stored);if(Number.isFinite(value))return Math.max(0,Math.min(1,value));}}catch{}
-  return 1;
+  return .5;
 }
 
 function localDateKey() {
@@ -513,7 +513,7 @@ function impact(word:string,origin:Point|Ball):void{
   const s=state.sim;if(!s)return;
   const x=Math.max(70,Math.min(W-70,origin?.x??W/2)),y=Math.max(115,Math.min(H-45,origin?.y??H/2));
   const index=s.impactPopups.length;
-  s.impactPopups.push({word,x,y,born:performance.now(),size:word.length>12?24:word.length>8?29:36,rotation:(index%2?1:-1)*(.045+(index%3)*.025),color:word.includes('+')?'#ffffff':word.includes('−')?'#ff8c82':'#edff24'});
+  s.impactPopups.push({word,x,y,born:performance.now(),size:word.length>12?24:word.length>8?29:36,rotation:(index%2?1:-1)*(.045+(index%3)*.025),color:word.includes('+')?'#8ee888':word.includes('−')?'#ff8c82':'#edff24'});
 }
 
 function emitParticles(origin:Point|Ball,{count=10,color='#fff',speed=300,gravity=500,kind='spark',size=6}:ParticleOptions={}):void{
@@ -532,7 +532,7 @@ function materialContact(origin:Point|Ball,a:Material|undefined,b:Material|undef
 }
 
 let audioCtx:AudioContext|undefined;
-function audioTone(freq:number,duration:number,type:OscillatorType='sine',volume=.1):void{if(state.soundVolume<=0)return;audioCtx??=new AudioContext();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume*state.soundVolume,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}
+function audioTone(freq:number,duration:number,type:OscillatorType='sine',volume=.1):void{if(state.soundVolume<=0)return;audioCtx??=new AudioContext();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(volume*state.soundVolume*SOUND_OUTPUT_GAIN,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);o.connect(g).connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+duration);}
 function audioHit(power:number):void{if(state.soundVolume<=0)return;audioTone(70+power*100,.07,'square',.03+power*.08);}
 function playSound(cue:SoundCue,options?:SoundCueOptions):void{playLibrarySound(cue,{...options,enabled:state.soundVolume>0,volume:(options?.volume??1)*state.soundVolume,random:state.sim?.visualRng});}
 

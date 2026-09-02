@@ -5,7 +5,7 @@ import {runBehaviorHook} from '../src/behaviors.js';
 import {fighters,getFighter} from '../src/fighters.js';
 import {simulateMatch} from '../src/headless-simulation.js';
 import {createInitialBall} from '../src/initial-conditions.js';
-import {soundCues,soundSources} from '../src/sounds.js';
+import {SOUND_OUTPUT_GAIN,soundCues,soundSources} from '../src/sounds.js';
 import {contactFeedback} from '../src/materials.js';
 import {statSync} from 'node:fs';
 import {audioDurationSeconds} from './audio-duration.js';
@@ -92,6 +92,7 @@ for(const source of Object.values(soundSources)){
 }
 assert.ok(Object.keys(soundSources).length>=19,'the library should include distinct material recordings');
 assert.ok(Object.keys(soundCues).length>=20,'the semantic sound library should cover combat and fighter abilities');
+assert.equal(SOUND_OUTPUT_GAIN,.25,'100% player volume should cap output at one quarter of the original level');
 for(const [cue,definition] of Object.entries(soundCues)){
   assert.ok(definition.file||definition.synth,`${cue} needs a recording or synthesized fallback`);
   if(definition.file)assert.ok(statSync(new URL(`../public${definition.file}`,import.meta.url)).size>2_000,`${cue} should map to an available audio file`);

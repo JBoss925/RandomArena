@@ -4,6 +4,8 @@ import {soundSources} from './sound-sources.js';
 export {soundCues} from './sound-map.js';
 export {soundSources} from './sound-sources.js';
 
+/** Absolute output ceiling applied after source, cue, event, and player volume. */
+export const SOUND_OUTPUT_GAIN=.25;
 const lastPlayed=new Map<SoundCue,number>();
 const preloaded=new Map<string,HTMLAudioElement>();
 const loading=new Map<string,Promise<HTMLAudioElement|undefined>>();
@@ -24,18 +26,18 @@ export function playSound(cue:SoundCue,{enabled=true,volume=1,rate=1,random=Math
       const file=definition.file;
       const play=(template:HTMLAudioElement):void=>{
         const audio=template.cloneNode(true) as HTMLAudioElement;
-        audio.volume=Math.min(1,definition.volume*sourceVolume(file)*volume);
+        audio.volume=Math.min(1,definition.volume*sourceVolume(file)*volume*SOUND_OUTPUT_GAIN);
         audio.playbackRate=Math.max(.5,Math.min(2,definition.rate*rate+(random()-.5)*(definition.variance??0)));
         void audio.play().catch(error=>{
           console.warn(`Unable to play sound cue "${cue}" from ${file}.`,error);
-          playFallback(cue,definition.volume*sourceVolume(file)*volume);
+          playFallback(cue,definition.volume*sourceVolume(file)*volume*SOUND_OUTPUT_GAIN);
         });
       };
       const template=preloaded.get(file);
       if(template)play(template);
-      else void loadSound(file).then(loaded=>loaded?play(loaded):playFallback(cue,definition.volume*sourceVolume(file)*volume));
-    }else if(definition.synth)playSynth(definition.synth,definition.volume*volume,random);
-    else playFallback(cue,definition.volume*volume);
+      else void loadSound(file).then(loaded=>loaded?play(loaded):playFallback(cue,definition.volume*sourceVolume(file)*volume*SOUND_OUTPUT_GAIN));
+    }else if(definition.synth)playSynth(definition.synth,definition.volume*volume*SOUND_OUTPUT_GAIN,random);
+    else playFallback(cue,definition.volume*volume*SOUND_OUTPUT_GAIN);
   }catch{/* Audio support must never influence simulation state. */}
 }
 
