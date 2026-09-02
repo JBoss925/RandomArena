@@ -1,4 +1,4 @@
-import type { Fighter, FighterSpec } from './types';
+import type { Fighter, FighterSpec, Material } from './types';
 
 const spec=(icon:string,label:string,value:string):FighterSpec=>({icon,label,value});
 
@@ -29,8 +29,11 @@ export const fighters:Fighter[]=[
 // never obscures the readable fantasy definitions above.
 const powerTuning:Record<string,number>={volt:.8949,brick:.7413,mint:.9884,goldie:1.2155,void:.8148,bubble:1.2222,moss:.935,glitch:1.0686,frost:.915,ember:.9016,echo:.8682,rook:.6411,comet:1.5696,static:1.0352,anchor:.8615,orbit:1.1688,saber:.768,slugger:.78,shotgun:1.448,sniper:2.3342};
 const bodyDamageTuning:Record<string,number>={volt:.7,brick:.95,mint:.75,goldie:.55,void:.8,bubble:.5,moss:.65,glitch:.6,frost:.55,ember:.65,echo:.6,rook:.8,comet:.5,static:.6,anchor:.65,orbit:.45,saber:.22,slugger:.35,shotgun:.35,sniper:.25};
+const bodyMaterials:Record<string,Material>={volt:'plastic',brick:'stone',mint:'rubber',goldie:'metal',void:'energy',bubble:'rubber',moss:'wood',glitch:'energy',frost:'glass',ember:'ceramic',echo:'glass',rook:'metal',comet:'glass',static:'energy',anchor:'metal',orbit:'metal',saber:'plastic',slugger:'plastic',shotgun:'plastic',sniper:'plastic'};
+const weaponMaterials:Record<string,Material>={sword:'metal',bat:'wood',shotgun:'metal',sniper:'metal'};
 for(const fighter of fighters){
-  fighter.power=powerTuning[fighter.id];fighter.bodyDamageScale=bodyDamageTuning[fighter.id];
+  fighter.power=powerTuning[fighter.id];fighter.bodyDamageScale=bodyDamageTuning[fighter.id];fighter.material=bodyMaterials[fighter.id]??'plastic';
+  if(fighter.weapon)fighter.weapon.material=weaponMaterials[fighter.weapon.type]??'plastic';
   if(!fighter.specs.some(item=>item.label==='Body damage'))fighter.specs.push(spec('damage','Body damage',`${Math.round(fighter.bodyDamageScale*100)}% normal`));
 }
 

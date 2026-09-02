@@ -2,9 +2,14 @@ import assert from 'node:assert/strict';
 import {stepProjectiles} from '../src/projectiles.js';
 import {applyWeaponMotion,collectWeaponHit,collectWeaponWorldContact} from '../src/weapons.js';
 import {runBehaviorHook} from '../src/behaviors.js';
-import {getFighter} from '../src/fighters.js';
+import {fighters,getFighter} from '../src/fighters.js';
 import {simulateMatch} from '../src/headless-simulation.js';
 import {createInitialBall} from '../src/initial-conditions.js';
+import {soundCues,soundSources} from '../src/sounds.js';
+import {contactFeedback} from '../src/materials.js';
+import {statSync} from 'node:fs';
+import {audioDurationSeconds} from './audio-duration.js';
+import {contrastForeground,contrastRatio} from '../src/color-contrast.js';
 import type {Ball, Fighter, Hazard, Projectile, Side} from '../src/types.js';
 
 const bounds={left:0,right:300,top:0,bottom:300};
@@ -65,4 +70,61 @@ assert.equal(struck.vy,-1120,'a faster target should retain and multiply its spe
 const first=simulateMatch(fighter('shotgun'),fighter('sniper'),'ranged-determinism');
 const second=simulateMatch(fighter('shotgun'),fighter('sniper'),'ranged-determinism');
 assert.deepEqual(first,second,'ranged simulation must replay identically from the same seed');
-console.log('Projectile, weapon-contact, and deterministic replay tests passed.');
+assert.equal(contactFeedback('plastic','plastic',5).cue,'materialPlastic','ordinary balls should make a light plastic clack');
+assert.equal(contactFeedback('plastic','plastic',5,{wall:true}).cue,'materialWall','ordinary wall contacts should use the lighter arena tap');
+assert.equal(contactFeedback('metal','plastic',5).cue,'materialMetal','metal bodies should retain their metallic contact');
+assert.equal(contactFeedback('rubber','metal',5).cue,'materialSoft','rubber should damp contact with a hard body');
+assert.equal(contactFeedback(fighter('mint').material,fighter('anchor').material,5).cue,'materialSoft','Mint versus Anchor should route to an audible mixed-material cue');
+assert.equal(contactFeedback('wood','metal',5,{primary:true}).cue,'materialWood','a wooden bat should sound like wood regardless of its target');
+for(const id of ['brick','mint','goldie','moss','frost','rook','anchor'])assert.ok(fighter(id).material,`${id} should declare a body material`);
+for(const current of fighters){
+  const foreground=contrastForeground(current.color),chosen=foreground==='light'?'#fff':'#151515',other=foreground==='light'?'#151515':'#fff';
+  assert.ok(contrastRatio(current.color,chosen)>=contrastRatio(current.color,other),`${current.name} should receive its highest-contrast card foreground`);
+}
+assert.equal(fighter('saber').weapon?.material,'metal');
+assert.equal(fighter('slugger').weapon?.material,'wood');
+for(const source of Object.values(soundSources)){
+  assert.equal(source.license,'CC0');
+  assert.ok(source.volume>=0&&source.volume<=1,`${source.localUrl} source volume should remain between 0 and 1`);
+  assert.match(source.sourcePage,/^https:\/\/opengameart\.org\//);
+  assert.match(source.dataMp3Url,/^https:\/\/opengameart\.org\/sites\/default\/files\//);
+  assert.ok(statSync(new URL(`../public${source.localUrl}`,import.meta.url)).size>2_000,`${source.localUrl} should contain a downloaded audio asset`);
+}
+assert.ok(Object.keys(soundSources).length>=19,'the library should include distinct material recordings');
+assert.ok(Object.keys(soundCues).length>=20,'the semantic sound library should cover combat and fighter abilities');
+for(const [cue,definition] of Object.entries(soundCues)){
+  assert.ok(definition.file||definition.synth,`${cue} needs a recording or synthesized fallback`);
+  if(definition.file)assert.ok(statSync(new URL(`../public${definition.file}`,import.meta.url)).size>2_000,`${cue} should map to an available audio file`);
+}
+assert.equal(soundCues.coin.file,'/audio/goldie-coin.wav','Goldie stacks should use the dedicated coin cue');
+assert.ok(soundCues.coin.volume>=.7,'Goldie stacks should remain audible in the combat mix');
+assert.ok(soundCues.bodyContact.file,'ordinary fighter collisions need an audible foundation recording');
+assert.ok(soundCues.wallContact.file,'ordinary arena contacts need an audible foundation recording');
+assert.ok(soundCues.materialSoft.volume>=.5,'mixed soft/hard contacts such as Mint versus Anchor must remain audible');
+const goldie=makeBall('goldie','left'),goldieSounds:string[]=[];
+runBehaviorHook(goldie,'dealHit',{event:{damage:5,force:5},playSound:cue=>goldieSounds.push(cue)});
+runBehaviorHook(goldie,'dealHit',{event:{damage:17,force:5,jackpot:true},playSound:cue=>goldieSounds.push(cue)});
+assert.deepEqual(goldieSounds,['coin','jackpot'],'Goldie should sound both a stack gain and jackpot cashout');
+const duration=(source:keyof typeof soundSources):number=>audioDurationSeconds(new URL(`../public${soundSources[source].localUrl}`,import.meta.url));
+const cueDuration=(cue:keyof typeof soundCues):number=>{
+  const definition=soundCues[cue];
+  assert.ok(definition.file,`${cue} should map to a recording`);
+  return audioDurationSeconds(new URL(`../public${definition.file}`,import.meta.url))/definition.rate;
+};
+assert.ok(duration('rubberBoing')<.1,'rapid rubber contacts need a naturally tiny source sample');
+assert.ok(duration('bodyContact')<.25,'ordinary collisions need a naturally short contact transient');
+assert.ok(duration('metalTap')<.35,'routine metal contacts need a naturally short source sample');
+assert.ok(duration('pinballBumper')<.4,'pinball bumpers need a compact source sample');
+for(const source of ['freeze','iceShatter','healing','coin','burstFire','shotgunFire','laserFire','teleport','completion'] as const){
+  assert.ok(duration(source)<.8,`${source} should use a standalone effect below 800ms`);
+}
+assert.equal(soundCues.shotgun.file,'/audio/shotgun-fire.mp3','Shotgun should use the browser-ready real firearm recording');
+assert.ok(soundCues.shotgun.volume*soundSources.shotgunFire.volume>=.9,'Shotgun blast must remain prominent in the combat mix');
+assert.ok(duration('fire')/soundCues.fire.rate<.8,'fire ignition should finish below 800ms at its intended playback rate');
+for(const cue of ['bodyContact','wallContact','materialPlastic','materialWall','materialRubber','materialWood','materialStone','materialGlass','materialSoft','materialMetal','materialEnergy','coin','sword','bat','pinball'] as const){
+  assert.ok(cueDuration(cue)<.4,`${cue} should use a true contact transient below 400ms`);
+}
+for(const [cue,definition] of Object.entries(soundCues))if(definition.file){
+  assert.ok(audioDurationSeconds(new URL(`../public${definition.file}`,import.meta.url))/definition.rate<=2,`${cue} should finish within two seconds at its intended rate`);
+}
+console.log('Projectile, weapon-contact, deterministic replay, and CC0 sound-library tests passed.');

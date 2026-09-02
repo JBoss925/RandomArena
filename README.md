@@ -30,3 +30,9 @@ Results are written to `reports/tier-matrix.json` and `reports/tier-matrix.md`. 
 `npm run balance:optimize` searches fighter power coefficients with deterministic coordinate descent. For fine tuning around an established roster, use the same production sample set with `RUNS=24 SWEEPS=1 LOCAL_STEP=0.001 npm run balance:optimize`, apply the suggested values in `src/fighters.ts`, then run `npm run balance` to publish the verified matrix to the Versus viewer.
 
 Run `npm run balance:check` before shipping roster changes. It fails if any fighter falls outside 40–60% overall or any individual matchup falls outside the 20–80% counterplay envelope.
+
+## Sound library
+
+Combat uses semantic sound cues backed by short, locally served CC0 recordings from OpenGameArt, with procedural layers for effects such as brambles and energy drains. Source pages, authors, licenses, and the exact `data-mp3-url` values are recorded in `public/audio/SOURCES.md` and mirrored by the typed manifest in `src/sounds.ts`.
+
+To replace or rebalance an effect, put the audio file in `public/audio/` and edit its cue in `src/sound-map.ts`. Each cue exposes the file path, contextual volume, playback rate, pitch variance, and repeat cooldown. The prettified source manifest in `src/sound-sources.ts` has a second `volume` from 0–1 for correcting the recording's inherent loudness once across every cue that uses it. Source volume, cue volume, event volume, and the player's master volume are multiplied together. A missing or unloadable mapped file falls back to a short generated game tone instead of becoming silent. Keep third-party source and license details in `public/audio/SOURCES.md` when adding recordings.

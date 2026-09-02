@@ -1,6 +1,9 @@
 export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
+export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
+export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
 
@@ -11,6 +14,7 @@ type WeaponBase = {
   length: number;
   width: number;
   angularSpeed: number;
+  material?: Material;
 };
 
 export type MeleeWeapon = WeaponBase & {
@@ -45,6 +49,7 @@ export type Fighter = {
   name: string;
   color: string;
   accent: string;
+  material?: Material;
   speed: number;
   power: number;
   mass: number;
@@ -86,6 +91,7 @@ export type Ball = Point & {
   burnStacks: number;
   wallBoost: number;
   wallCrash: WallCrash | null;
+  visualStates: Record<string,number>;
   voltCharge?: number;
   armorPlates?: number;
   armorRepair?: number;
@@ -226,6 +232,7 @@ export type BehaviorContext = {
   emitParticles: (origin:Point|Ball,options?:ParticleOptions)=>void;
   audioTone: (frequency:number,duration:number,type?:OscillatorType,volume?:number)=>void;
   audioHit: (power:number)=>void;
+  playSound: (cue:SoundCue,options?:SoundCueOptions)=>void;
   ctx: CanvasRenderingContext2D;
 };
 

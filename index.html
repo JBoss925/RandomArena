@@ -24,10 +24,70 @@
           <p id="today-label">Loading date…</p>
         </div>
         <div class="mast-actions">
-          <button class="icon-button" id="sound-toggle" type="button" aria-label="Toggle sound">SOUND ON</button>
+          <button class="help-button" id="help-open" type="button" aria-label="How to play" title="How to play">
+            <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11.5"/><path d="M12.5 12.4c.3-2.3 1.8-3.6 4.1-3.6 2.5 0 4.1 1.5 4.1 3.7 0 1.8-.9 2.8-2.7 3.9-1.5.9-2 1.7-2 3.2v.6M16 24.2h.01"/></svg>
+          </button>
+          <div class="volume-control" id="volume-control">
+            <button id="volume-mute" type="button" aria-label="Mute sound" title="Mute sound">
+              <svg viewBox="0 0 32 24" aria-hidden="true">
+                <path class="speaker-body" d="M3 9h5l6-5v16l-6-5H3z" />
+                <path class="volume-wave wave-one" d="M17 9c1.5 1.6 1.5 4.4 0 6" />
+                <path class="volume-wave wave-two" d="M20 6c3.3 3.2 3.3 8.8 0 12" />
+                <path class="volume-wave wave-three" d="M23 3c5.1 4.9 5.1 13.1 0 18" />
+                <path class="mute-mark" d="m19 8 8 8m0-8-8 8" />
+              </svg>
+            </button>
+            <label class="sr-only" for="sound-volume">Sound volume</label>
+            <input id="sound-volume" type="range" min="0" max="100" step="1" value="100" aria-label="Sound volume" />
+            <output id="volume-value" for="sound-volume">100</output>
+          </div>
           <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle dark mode" aria-pressed="false">DARK MODE</button>
         </div>
       </header>
+
+      <dialog class="how-to" id="how-to-play" aria-labelledby="how-to-title">
+        <div class="how-to-head">
+          <div><span class="eyebrow">FIELD MANUAL / 01</span><h2 id="how-to-title">HOW TO PLAY</h2></div>
+          <button id="help-close" type="button" aria-label="Close how to play">CLOSE ×</button>
+        </div>
+        <div class="how-to-intro">
+          <span class="manual-number">5/5</span>
+          <div><strong>CALL EVERY WINNER.</strong><p>Random Arena gives you five deterministic ball fights. Pick the fighter you think will survive each bout. A perfect card means predicting all five correctly.</p></div>
+        </div>
+        <div class="how-to-grid">
+          <section>
+            <span class="manual-step">01</span><h3>READ THE MATCHUP</h3>
+            <p>Hover or focus a fighter’s <b>name</b> to reveal its playstyle, exact abilities, and core stats. The other fighter fades so you can identify it in the arena.</p>
+          </section>
+          <section>
+            <span class="manual-step">02</span><h3>TAKE YOUR PICK</h3>
+            <p>Choose Fighter A or Fighter B, then lock your pick. Once the fight starts, the prediction cannot be changed. The same seed always produces the same matchup and outcome.</p>
+          </section>
+          <section>
+            <span class="manual-step">03</span><h3>WATCH THE FIGHT</h3>
+            <p>Fighters move on their own. Bodies, held weapons, projectiles, orbiting objects, status effects, and hazards can all decide the bout. When both fighters fall below zero together, lower overkill loses.</p>
+          </section>
+          <section>
+            <span class="manual-step">04</span><h3>CHASE THE CARD</h3>
+            <p>Advance through all five bouts and aim for 5/5. Daily mode is shared by everyone; Endless creates shareable seeded cards. The hidden Versus lab lets local players inspect specific matchups.</p>
+          </section>
+        </div>
+        <div class="object-guide">
+          <h3>KNOW THE FIELD</h3>
+          <div class="object-list">
+            <div><svg class="field-icon fighter-field-icon" viewBox="0 0 52 52" aria-hidden="true"><ellipse cx="28" cy="43" rx="17" ry="5" fill="#151515" opacity=".22"/><circle cx="24" cy="25" r="18" fill="#ff3d2e" stroke="#151515" stroke-width="4"/><circle cx="18" cy="18" r="5" fill="#ffb0a9"/></svg><span><b>FIGHTERS</b>Colored balls with unique materials, stats, and composable powers.</span></div>
+            <div><svg class="field-icon gear-field-icon" viewBox="0 0 58 52" aria-hidden="true"><ellipse cx="23" cy="44" rx="16" ry="4" fill="#151515" opacity=".22"/><circle cx="21" cy="27" r="16" fill="#3759ff" stroke="#151515" stroke-width="4"/><circle cx="16" cy="21" r="4" fill="#9cafff"/><g transform="rotate(-22 32 22)"><rect x="29" y="7" width="8" height="29" fill="#d7dde2" stroke="#151515" stroke-width="3"/><path d="m33 2 6 7H27z" fill="#f3efdf" stroke="#151515" stroke-width="3"/><path d="M25 35h16" stroke="#151515" stroke-width="4"/></g></svg><span><b>GEAR</b>Swords, bats, firearms, projectiles, shields, and satellites belong to specific fighters.</span></div>
+            <div><svg class="field-icon hazard-field-icon" viewBox="0 0 52 52" aria-hidden="true"><path d="M26 2 30 10 38 5 38 14 48 14 42 22 50 28 40 31 44 41 34 38 28 49 23 39 13 45 13 34 2 32 10 24 3 16 14 16 15 6 22 11Z" fill="#ff3d2e" stroke="#151515" stroke-width="4" stroke-linejoin="miter"/></svg><span><b>HAZARDS</b>Before the fight, hover a pulsing hazard to see its seeded effect and strength.</span></div>
+          </div>
+          <div class="hazard-key">
+            <span><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15" fill="#e6ff34" stroke="#151515" stroke-width="5"/></svg><b>PILLAR</b> blocks</span>
+            <span><svg viewBox="0 0 42 42" aria-hidden="true"><path d="M21 2 25 10 33 5 32 14 41 15 34 22 40 29 31 30 31 39 22 34 15 41 13 31 3 32 9 23 2 17 12 15 11 6 18 10Z" fill="#ff3d2e" stroke="#151515" stroke-width="4" stroke-linejoin="miter"/></svg><b>SPIKES</b> damage</span>
+            <span><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15" fill="#20c997" stroke="#151515" stroke-width="5"/><path d="M18 10h6v8h8v6h-8v8h-6v-8h-8v-6h8z" fill="#f3efdf"/></svg><b>MEDBAY</b> heals</span>
+            <span><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15" fill="#f6b817" stroke="#151515" stroke-width="5"/><circle cx="21" cy="21" r="9" fill="none" stroke="#151515" stroke-width="4"/></svg><b>BUMPER</b> launches</span>
+          </div>
+        </div>
+        <div class="manual-note"><b>CONTROLS</b><span>Pause or change simulation speed while watching. Afterward, Replay Fight reruns the exact seed without changing your prediction. Use the speaker control for volume.</span></div>
+      </dialog>
 
       <main>
         <section class="score-strip" aria-label="Daily progress">
