@@ -16,12 +16,16 @@
         <nav class="mode-nav" aria-label="Game mode">
           <a href="/daily" data-route="daily">DAILY</a>
           <a href="/endless" data-route="endless">ENDLESS</a>
+          <a href="/versus" data-route="versus" id="versus-nav" hidden>VERSUS</a>
         </nav>
         <div class="mast-meta">
           <p id="mode-label">Daily fight card</p>
           <p id="today-label">Loading date…</p>
         </div>
-        <button class="icon-button" id="sound-toggle" type="button" aria-label="Toggle sound">SOUND ON</button>
+        <div class="mast-actions">
+          <button class="icon-button" id="sound-toggle" type="button" aria-label="Toggle sound">SOUND ON</button>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Toggle dark mode" aria-pressed="false">DARK MODE</button>
+        </div>
       </header>
 
       <main>
@@ -46,7 +50,7 @@
           <div class="fight-column">
             <div class="arena-frame" id="arena-frame">
               <canvas id="arena" width="720" height="720" aria-label="Ball fight arena"></canvas>
-              <div class="arena-stamp" id="arena-stamp">MAKE YOUR PICK</div>
+              <div class="arena-stamp" id="arena-stamp">TAKE YOUR PICK</div>
               <div class="hp-row" aria-label="Fighter health">
                 <div class="hp-block"><span id="left-hp-text">100</span><div class="hp-track"><i id="left-hp"></i></div></div>
                 <div class="hp-block right"><span id="right-hp-text">100</span><div class="hp-track"><i id="right-hp"></i></div></div>

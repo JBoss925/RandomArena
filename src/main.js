@@ -80,7 +80,7 @@ function setupBout() {
   document.documentElement.style.setProperty('--red', b.left.color); document.documentElement.style.setProperty('--blue', b.right.color);
   document.querySelectorAll('.pick-card').forEach(el => el.classList.remove('selected'));
   $('lock-pick').disabled = true; $('lock-pick').hidden = state.mode==='versus'; $('pick-list').hidden = state.mode==='versus'; $('versus-controls').hidden=state.mode!=='versus'; $('result-card').hidden = true; $('result-card').classList.remove('loss','close-call');$('result-breakdown').hidden=true;
-  $('arena-stamp').textContent = state.mode==='versus'?'READY':'MAKE YOUR PICK'; $('arena-stamp').classList.remove('hidden');
+  $('arena-stamp').textContent = state.mode==='versus'?'READY':'TAKE YOUR PICK'; $('arena-stamp').classList.remove('hidden');
   $('bet-title').hidden=false;$('fight-instruction').hidden=false;
   $('global-pause').textContent = 'Ⅱ PAUSE FIGHT'; $('global-pause').classList.remove('active');
   updatePips(); updateHud(); draw();
@@ -427,6 +427,18 @@ document.querySelectorAll('.pick-card').forEach(card=>{
 $('lock-pick').addEventListener('click',startFight);
 $('global-pause').addEventListener('click',()=>{if(!state.running)return;state.paused=!state.paused;$('global-pause').classList.toggle('active',state.paused);$('global-pause').textContent=state.paused?'▶ RESUME FIGHT':'Ⅱ PAUSE FIGHT';});
 $('sound-toggle').addEventListener('click',()=>{state.sound=!state.sound;$('sound-toggle').textContent=`SOUND ${state.sound?'ON':'OFF'}`;if(state.sound)audioTone(420,.06,'sine',.05);});
+function setTheme(theme,{persist=true}={}){
+  const dark=theme==='dark';
+  document.documentElement.dataset.theme=dark?'dark':'light';
+  $('theme-toggle').textContent=dark?'LIGHT MODE':'DARK MODE';
+  $('theme-toggle').setAttribute('aria-pressed',String(dark));
+  document.querySelector('meta[name="theme-color"]').content=dark?'#151515':'#f3efdf';
+  if(persist)try{localStorage.setItem('random-arena-theme',dark?'dark':'light');}catch{}
+}
+let savedTheme='light';
+try{savedTheme=localStorage.getItem('random-arena-theme')||'light';}catch{}
+setTheme(savedTheme,{persist:false});
+$('theme-toggle').addEventListener('click',()=>setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 $('next-bout').addEventListener('click',()=>{
   if(state.mode==='versus'){setupBout();startFight();return;}
   if(state.cardComplete){resetCard();return;}
@@ -457,6 +469,8 @@ function showFinal(){const perfect=state.wins===5;$('result-title').textContent=
 function loop(t){if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000)*state.simulationSpeed;state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
 
 for(const select of [$('versus-left'),$('versus-right')])select.innerHTML=fighters.map(f=>`<option value="${f.id}">${f.name} — ${f.ability}</option>`).join('');
+const localHostnames=new Set(['localhost','127.0.0.1','[::1]','0.0.0.0']);
+$('versus-nav').hidden=!(localHostnames.has(location.hostname)||location.hostname.endsWith('.localhost'));
 for(const select of [$('versus-left'),$('versus-right')])select.addEventListener('change',()=>{
   if(state.mode!=='versus')return;
   setMode('versus',$('seed-input').value,{push:false,left:$('versus-left').value,right:$('versus-right').value});
