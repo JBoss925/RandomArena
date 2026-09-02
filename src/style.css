@@ -81,6 +81,26 @@ main { max-width: 1500px; margin: 0 auto; padding: 22px 28px 64px; }
 .versus { place-self: center; background: var(--acid); color: #151515; border: 2px solid var(--ink); padding: 7px 6px; transform: rotate(-4deg); font-family: "Archivo Black"; font-size: 14px; }
 .arena-frame { --paper: #f3efdf; --ink: #151515; position: relative; overflow: hidden; background: #dad5c3; }
 canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
+.hazard-tooltips { position: absolute; z-index: 5; inset: 0; pointer-events: none; }
+.hazard-tooltips[hidden] { display: none; }
+.hazard-hover-target { position: absolute; z-index: 0; padding: 0; border: 0; border-radius: 50%; background: transparent; pointer-events: auto; cursor: help; }
+.hazard-hover-target::after { content: ""; position: absolute; inset: -6px; border: 3px solid rgba(230,255,52,.9); border-radius: 50%; box-shadow: 0 0 0 0 rgba(230,255,52,.7); animation: hazard-prompt 1.45s ease-out infinite; }
+.hazard-hover-target:hover, .hazard-hover-target:focus-visible { z-index: 2; outline: none; }
+.hazard-hover-target:focus-visible::after { border-color: #fff; }
+.hazard-tooltip { position: absolute; width: 132px; min-height: 46px; padding: 6px; display: grid; grid-template-columns: 25px 1fr; align-items: center; gap: 6px; border: 2px solid #151515; background: #f3efdf; color: #151515; box-shadow: 3px 3px 0 #151515; opacity: 0; visibility: hidden; transition: opacity .12s, visibility .12s, transform .12s; }
+.hazard-hover-target.above .hazard-tooltip { left: 50%; top: -12px; transform: translate(-50%,-92%); }
+.hazard-hover-target.below .hazard-tooltip { left: 50%; top: calc(100% + 12px); transform: translate(-50%,8%); }
+.hazard-hover-target.left .hazard-tooltip { right: calc(100% + 12px); top: 50%; transform: translate(8%,-50%); }
+.hazard-hover-target.right .hazard-tooltip { left: calc(100% + 12px); top: 50%; transform: translate(-8%,-50%); }
+.hazard-hover-target:hover .hazard-tooltip, .hazard-hover-target:focus-visible .hazard-tooltip { opacity: 1; visibility: visible; }
+.hazard-hover-target.above:hover .hazard-tooltip, .hazard-hover-target.above:focus-visible .hazard-tooltip { transform: translate(-50%,-100%); }
+.hazard-hover-target.below:hover .hazard-tooltip, .hazard-hover-target.below:focus-visible .hazard-tooltip { transform: translate(-50%,0); }
+.hazard-hover-target.left:hover .hazard-tooltip, .hazard-hover-target.left:focus-visible .hazard-tooltip { transform: translate(0,-50%); }
+.hazard-hover-target.right:hover .hazard-tooltip, .hazard-hover-target.right:focus-visible .hazard-tooltip { transform: translate(0,-50%); }
+.hazard-tooltip svg { width: 22px; height: 22px; fill: none; stroke: #151515; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hazard-tooltip small { display: block; margin: 0 0 2px; font: 6px "IBM Plex Mono"; letter-spacing: .05em; text-transform: uppercase; }
+.hazard-tooltip b { display: block; font: 9px "Archivo Black"; }
+@keyframes hazard-prompt { 70%,100% { box-shadow: 0 0 0 13px rgba(230,255,52,0); } }
 .arena-stamp { position: absolute; left: 50%; top: 48%; translate: -50% -50%; padding: 10px 15px; border: 3px solid var(--ink); background: var(--acid); color: #151515; font-family: "Archivo Black"; font-size: clamp(14px, 2vw, 24px); transform: rotate(-2deg); box-shadow: 5px 5px 0 var(--ink); pointer-events: none; }
 .arena-stamp.hidden { display: none; }
 .hp-row { position: absolute; z-index: 4; left: 18px; right: 18px; top: 16px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 18%; pointer-events: none; }

@@ -31,13 +31,28 @@ export function collectWeaponHit(ball, rival, dt) {
 
 export function collectWeaponWorldContact(ball,bounds,hazards=[]){
   const weapon=ball.f.weapon;
-  if(!weapon?.reversesOnContact||ball.weaponWorldCooldown>0)return null;
+  if(!weapon||ball.weaponWorldCooldown>0)return null;
   const dx=Math.cos(ball.angle),dy=Math.sin(ball.angle);
   const start={x:ball.x+dx*ball.radius*.55,y:ball.y+dy*ball.radius*.55};
   const end={x:ball.x+dx*(ball.radius+weapon.length),y:ball.y+dy*(ball.radius+weapon.length)};
   let contact=null;
-  if(end.x<bounds.left||end.x>bounds.right||end.y<bounds.top||end.y>bounds.bottom)contact={x:Math.max(bounds.left,Math.min(bounds.right,end.x)),y:Math.max(bounds.top,Math.min(bounds.bottom,end.y))};
-  if(!contact)for(const hazard of hazards)if(pointSegmentDistance(hazard.x,hazard.y,start.x,start.y,end.x,end.y)<=hazard.r+weapon.width/2){contact={x:hazard.x,y:hazard.y};break;}
+  const hitsLeft=end.x<bounds.left,hitsRight=end.x>bounds.right,hitsTop=end.y<bounds.top,hitsBottom=end.y>bounds.bottom;
+  if(hitsLeft||hitsRight||hitsTop||hitsBottom){
+    if((hitsLeft&&ball.vx<0)||(hitsRight&&ball.vx>0))ball.vx*=-1;
+    if((hitsTop&&ball.vy<0)||(hitsBottom&&ball.vy>0))ball.vy*=-1;
+    contact={x:Math.max(bounds.left,Math.min(bounds.right,end.x)),y:Math.max(bounds.top,Math.min(bounds.bottom,end.y)),kind:'wall'};
+  }
+  if(!contact)for(const hazard of hazards){
+    const nearest=pointSegmentClosest(hazard.x,hazard.y,start.x,start.y,end.x,end.y);
+    if(nearest.distance>hazard.r+weapon.width/2)continue;
+    let nx=nearest.x-hazard.x,ny=nearest.y-hazard.y,length=Math.hypot(nx,ny);
+    if(length<1e-6){nx=ball.x-hazard.x;ny=ball.y-hazard.y;length=Math.hypot(nx,ny)||1;}
+    nx/=length;ny/=length;
+    const approach=ball.vx*nx+ball.vy*ny;
+    if(approach<0){ball.vx-=2*approach*nx;ball.vy-=2*approach*ny;}
+    contact={x:nearest.x,y:nearest.y,kind:'hazard',normalX:nx,normalY:ny};
+    break;
+  }
   if(!contact)return null;
   ball.angularVelocity*=-1;ball.weaponWorldCooldown=8;
   return contact;
@@ -82,8 +97,13 @@ export function drawWeapon(ctx, ball) {
 }
 
 function pointSegmentDistance(px, py, ax, ay, bx, by) {
+  return pointSegmentClosest(px,py,ax,ay,bx,by).distance;
+}
+
+function pointSegmentClosest(px,py,ax,ay,bx,by){
   const abX = bx - ax, abY = by - ay;
   const lengthSquared = abX * abX + abY * abY;
   const t = lengthSquared ? Math.max(0, Math.min(1, ((px - ax) * abX + (py - ay) * abY) / lengthSquared)) : 0;
-  return Math.hypot(px - (ax + abX * t), py - (ay + abY * t));
+  const x=ax+abX*t,y=ay+abY*t;
+  return {x,y,distance:Math.hypot(px-x,py-y)};
 }
