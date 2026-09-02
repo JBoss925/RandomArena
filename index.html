@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f3efdf" />
+    <meta name="description" content="Pick five winners. Watch deterministic ball fights. Chase the perfect card." />
+    <title>Random Arena — Daily Ball Fights</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="masthead">
+        <a class="brand" href="#" aria-label="Random Arena home">
+          <span>RANDOM</span><span>ARENA</span>
+        </a>
+        <nav class="mode-nav" aria-label="Game mode">
+          <a href="/daily" data-route="daily">DAILY</a>
+          <a href="/endless" data-route="endless">ENDLESS</a>
+        </nav>
+        <div class="mast-meta">
+          <p id="mode-label">Daily fight card</p>
+          <p id="today-label">Loading date…</p>
+        </div>
+        <button class="icon-button" id="sound-toggle" type="button" aria-label="Toggle sound">SOUND ON</button>
+      </header>
+
+      <main>
+        <section class="score-strip" aria-label="Daily progress">
+          <div>
+            <span class="eyebrow">TODAY'S CARD</span>
+            <strong id="round-label">BOUT 01 / 05</strong>
+          </div>
+          <ol id="score-pips" class="score-pips" aria-label="Results">
+            <li class="active">1</li><li>2</li><li>3</li><li>4</li><li>5</li>
+          </ol>
+          <div class="record"><span class="eyebrow">RECORD</span><strong id="record">0—0</strong></div>
+        </section>
+
+        <section class="arena-layout">
+          <div class="match-title">
+            <div class="fighter-name left-name info-trigger" id="left-info" tabindex="0" role="button" aria-label="View fighter A ability"><span id="left-number">01</span><h1 id="left-name">VOLT</h1><em>ABILITY ↘</em><div class="fighter-dossier" id="left-dossier" role="tooltip"></div></div>
+            <span class="versus">VS</span>
+            <div class="fighter-name right-name info-trigger" id="right-info" tabindex="0" role="button" aria-label="View fighter B ability"><em>ABILITY ↙</em><h1 id="right-name">BRICK</h1><span id="right-number">02</span><div class="fighter-dossier" id="right-dossier" role="tooltip"></div></div>
+          </div>
+
+          <div class="fight-column">
+            <div class="arena-frame" id="arena-frame">
+              <canvas id="arena" width="720" height="720" aria-label="Ball fight arena"></canvas>
+              <div class="arena-stamp" id="arena-stamp">MAKE YOUR PICK</div>
+              <div class="impact-word" id="impact-word" aria-hidden="true"></div>
+              <div class="hp-row" aria-label="Fighter health">
+                <div class="hp-block"><span id="left-hp-text">100</span><div class="hp-track"><i id="left-hp"></i></div></div>
+                <div class="hp-block right"><span id="right-hp-text">100</span><div class="hp-track"><i id="right-hp"></i></div></div>
+              </div>
+            </div>
+
+            <div class="controls">
+              <button id="global-pause" type="button">Ⅱ PAUSE FIGHT</button>
+              <span id="seed-label" class="seed-label">SEED —</span>
+            </div>
+          </div>
+
+          <aside class="bet-panel" aria-labelledby="bet-title">
+            <div class="panel-head"><span class="eyebrow">PREDICTION DESK</span><span>NO. <b id="bout-number">01</b></span></div>
+            <h2 id="bet-title">WHO LEAVES<br />THE RING?</h2>
+            <p class="instruction">Choose one fighter. The simulation is locked until your pick is in.</p>
+            <div class="pick-list" id="pick-list">
+              <button class="pick-card left-pick" data-pick="left" type="button">
+                <span class="pick-ball left-dot"></span><span><small>FIGHTER A</small><strong id="left-pick-name">VOLT</strong></span><b>↗</b>
+              </button>
+              <button class="pick-card right-pick" data-pick="right" type="button">
+                <span class="pick-ball right-dot"></span><span><small>FIGHTER B</small><strong id="right-pick-name">BRICK</strong></span><b>↗</b>
+              </button>
+            </div>
+            <button id="lock-pick" class="lock-button" type="button" disabled>LOCK PICK &amp; FIGHT</button>
+            <div id="result-card" class="result-card" hidden>
+              <span class="eyebrow">OFFICIAL RESULT</span>
+              <strong id="result-title">CORRECT</strong>
+              <p id="result-copy"></p>
+              <button id="next-bout" type="button">NEXT BOUT →</button>
+            </div>
+            <div class="seed-panel">
+              <label for="seed-input" id="seed-title">DAILY SEED</label>
+              <div class="seed-field"><input id="seed-input" type="text" readonly spellcheck="false" /><button id="copy-seed" type="button">COPY</button></div>
+              <div class="endless-actions" id="endless-actions">
+                <button id="load-seed" type="button">LOAD SEED</button>
+                <button id="random-seed" type="button">RANDOMIZE</button>
+                <button id="share-seed" type="button">COPY LINK</button>
+              </div>
+              <p id="seed-help">Today's seed is locked, but you can copy it.</p>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

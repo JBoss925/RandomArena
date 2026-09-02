@@ -1,0 +1,141 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+:root {
+  --paper: #f3efdf;
+  --ink: #151515;
+  --acid: #e6ff34;
+  --red: #ff3d2e;
+  --blue: #3759ff;
+  --muted: #aaa797;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: var(--paper); }
+button, a { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.masthead { min-height: 92px; display: grid; grid-template-columns: 220px auto 1fr auto; align-items: stretch; border-bottom: 3px solid var(--ink); }
+.brand { font-family: "Archivo Black", sans-serif; font-size: 24px; line-height: .8; letter-spacing: -1.5px; padding: 24px 28px; background: var(--ink); color: var(--paper); text-decoration: none; display: flex; flex-direction: column; justify-content: center; }
+.brand span:last-child { color: var(--acid); }
+.mode-nav { display: flex; border-right: 3px solid var(--ink); }
+.mode-nav a { min-width: 94px; padding: 0 16px; display: grid; place-items: center; border-right: 2px solid var(--ink); font-size: 10px; font-weight: 600; text-decoration: none; }
+.mode-nav a:last-child { border-right: 0; }
+.mode-nav a:hover, .mode-nav a.active { background: var(--acid); }
+.mast-meta { padding: 0 24px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.mast-meta p:first-child::before { content: "●"; color: var(--red); margin-right: 10px; }
+.icon-button { border: 0; border-left: 3px solid var(--ink); background: transparent; width: 126px; font-size: 11px; font-weight: 600; }
+.icon-button:hover { background: var(--acid); }
+main { max-width: 1500px; margin: 0 auto; padding: 22px 28px 64px; }
+.score-strip { max-width: 893px; margin: 0 auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; padding-bottom: 18px; }
+.eyebrow { display: block; font-size: 9px; font-weight: 600; letter-spacing: .16em; margin-bottom: 6px; }
+.score-strip strong { font-family: "Archivo Black"; font-size: 17px; }
+.score-pips { list-style: none; display: flex; margin: 0; padding: 0; border: 2px solid var(--ink); }
+.score-pips li { width: 42px; height: 34px; display: grid; place-items: center; border-right: 2px solid var(--ink); font: 600 11px "IBM Plex Mono"; }
+.score-pips li:last-child { border: 0; }
+.score-pips li.active { background: var(--ink); color: var(--acid); }
+.score-pips li.win { background: var(--acid); }
+.score-pips li.loss { background: var(--red); }
+.record { text-align: right; }
+.arena-layout { width: 100%; max-width: 893px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 560px) 330px; border: 3px solid var(--ink); }
+.fight-column { min-width: 0; border-right: 3px solid var(--ink); }
+.match-title { grid-column: 1 / -1; min-height: 100px; padding: 12px 22px; display: grid; grid-template-columns: 1fr 70px 1fr; align-items: center; border-bottom: 3px solid var(--ink); }
+.fighter-name { display: flex; align-items: center; gap: 16px; }
+.info-trigger { position: relative; cursor: help; outline: none; }
+.info-trigger > em { position: absolute; left: 44px; right: auto; bottom: -15px; font: 600 7px "IBM Plex Mono"; letter-spacing: .12em; white-space: nowrap; }
+.right-name.info-trigger > em { left: auto; right: 44px; }
+.info-trigger h1 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 7px; text-decoration-color: transparent; transition: text-decoration-color .12s; }
+.info-trigger:hover h1, .info-trigger:focus h1 { text-decoration-color: var(--acid); }
+.fighter-dossier { position: absolute; z-index: 20; top: calc(100% + 14px); left: 0; width: min(290px, 75vw); padding: 15px; border: 3px solid var(--ink); background: var(--acid); box-shadow: 6px 6px 0 var(--ink); text-align: left; opacity: 0; visibility: hidden; translate: 0 -5px; transition: opacity .12s, translate .12s, visibility .12s; }
+.right-name .fighter-dossier { left: auto; right: 0; }
+.info-trigger:hover .fighter-dossier, .info-trigger:focus .fighter-dossier, .info-trigger:focus-within .fighter-dossier { opacity: 1; visibility: visible; translate: 0; }
+.fighter-dossier strong { display: block; font: 14px "Archivo Black"; margin-bottom: 6px; }
+.fighter-dossier p { margin: 0; font: 9px/1.55 "IBM Plex Mono"; letter-spacing: 0; }
+.fighter-dossier small { display: block; margin-top: 10px; padding-top: 8px; border-top: 2px solid var(--ink); font: 8px "IBM Plex Mono"; }
+.fighter-name h1 { font-family: "Archivo Black"; font-size: clamp(28px, 3vw, 46px); letter-spacing: -0.06em; line-height: .85; margin: 0; text-transform: uppercase; }
+.fighter-name > span { width: 28px; height: 28px; border: 2px solid var(--ink); display: grid; place-items: center; font-size: 9px; flex: 0 0 auto; }
+.right-name { justify-content: flex-end; text-align: right; }
+.versus { place-self: center; background: var(--acid); border: 2px solid var(--ink); padding: 7px 6px; transform: rotate(-4deg); font-family: "Archivo Black"; font-size: 14px; }
+.arena-frame { position: relative; overflow: hidden; background: #dad5c3; }
+canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
+.arena-stamp { position: absolute; left: 50%; top: 48%; translate: -50% -50%; padding: 10px 15px; border: 3px solid var(--ink); background: var(--acid); font-family: "Archivo Black"; font-size: clamp(14px, 2vw, 24px); transform: rotate(-2deg); box-shadow: 5px 5px 0 var(--ink); pointer-events: none; }
+.arena-stamp.hidden { display: none; }
+.impact-word { position: absolute; left: 50%; top: 38%; translate: -50% -50%; font: 48px "Archivo Black"; color: var(--acid); -webkit-text-stroke: 3px var(--ink); transform: rotate(-8deg); pointer-events: none; opacity: 0; }
+.impact-word.pop { animation: pop .19s steps(2); }
+@keyframes pop { 0% { opacity: 1; scale: .6; } 70% { opacity: 1; scale: 1.15; } 100% { opacity: 0; scale: 1; } }
+.hp-row { position: absolute; z-index: 4; left: 18px; right: 18px; top: 16px; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 18%; pointer-events: none; }
+.hp-block { display: grid; grid-template-columns: 34px 1fr; align-items: center; gap: 8px; font: 600 10px "IBM Plex Mono"; color: var(--ink); }
+.hp-block > span { display: grid; place-items: center; min-height: 22px; padding: 2px 4px; background: #fff; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+.hp-block.right { grid-template-columns: 1fr 30px; text-align: right; }
+.hp-block.right span { order: 2; }
+.hp-track { border: 2px solid var(--ink); background: var(--paper); height: 10px; box-shadow: 2px 2px 0 var(--ink); }
+.hp-track i { display: block; width: 100%; height: 100%; background: var(--red); transform-origin: left; transition: width .08s linear; }
+.right .hp-track i { background: var(--blue); transform-origin: right; margin-left: auto; }
+.controls { min-height: 48px; display: flex; align-items: stretch; border-top: 3px solid var(--ink); }
+.controls button { background: transparent; border: 0; border-right: 2px solid var(--ink); padding: 0 16px; font-size: 9px; font-weight: 600; }
+.controls button:hover, .controls button.active { background: var(--acid); }
+.dot, .pick-ball { display: inline-block; border-radius: 50%; background: var(--red); }
+.dot { width: 8px; height: 8px; margin-right: 6px; }
+.right-dot { background: var(--blue); }
+.seed-label { margin-left: auto; align-self: center; padding: 0 14px; font-size: 8px; color: #68665c; }
+.bet-panel { display: flex; flex-direction: column; background: var(--paper); }
+.panel-head { display: flex; justify-content: space-between; padding: 16px 18px; border-bottom: 2px solid var(--ink); font-size: 10px; }
+.panel-head .eyebrow { margin: 0; }
+.bet-panel h2 { font: 34px/.92 "Archivo Black"; letter-spacing: -1.5px; margin: 26px 20px 12px; }
+.instruction { font-size: 10px; line-height: 1.6; margin: 0 20px 20px; color: #57554d; }
+.pick-list { border-top: 2px solid var(--ink); }
+.pick-card { width: 100%; min-height: 76px; display: grid; grid-template-columns: 42px 1fr 20px; gap: 11px; align-items: center; text-align: left; padding: 10px 18px; border: 0; border-bottom: 2px solid var(--ink); background: transparent; }
+.pick-card:hover { background: #fff; }
+.pick-card.selected { background: var(--acid); }
+.pick-ball { width: 34px; height: 34px; border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.pick-card small { display: block; font-size: 8px; letter-spacing: .1em; margin-bottom: 4px; }
+.pick-card strong { font: 18px "Archivo Black"; }
+.pick-card b { font-size: 18px; }
+.lock-button, .result-card button { margin: 18px; min-height: 54px; border: 3px solid var(--ink); background: var(--ink); color: var(--paper); font: 13px "Archivo Black"; box-shadow: 5px 5px 0 var(--red); }
+.lock-button:not(:disabled):hover, .result-card button:hover { color: var(--acid); translate: 2px 2px; box-shadow: 3px 3px 0 var(--red); }
+.lock-button:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+.result-card { margin: 18px; padding: 18px; border: 3px solid var(--ink); background: var(--acid); box-shadow: 6px 6px 0 var(--ink); }
+.result-card.loss { background: var(--red); }
+.result-card strong { display: block; font: 31px "Archivo Black"; }
+.result-card p { font-size: 10px; line-height: 1.5; }
+.result-card button { width: 100%; margin: 8px 0 0; box-shadow: none; }
+.seed-panel { margin-top: auto; padding: 16px 18px; border-top: 2px solid var(--ink); }
+.seed-panel label { display: block; margin-bottom: 8px; font-size: 8px; font-weight: 600; letter-spacing: .14em; }
+.seed-field { display: grid; grid-template-columns: minmax(0,1fr) auto; }
+.seed-field input { min-width: 0; height: 40px; padding: 0 10px; border: 2px solid var(--ink); background: #fff; color: var(--ink); font: 600 10px "IBM Plex Mono"; outline: none; }
+.seed-field input:focus { box-shadow: inset 0 0 0 2px var(--acid); }
+.seed-field button, .endless-actions button { border: 2px solid var(--ink); border-left: 0; background: var(--ink); color: var(--paper); font-size: 8px; font-weight: 600; }
+.seed-field button:hover, .endless-actions button:hover { color: var(--acid); }
+.endless-actions button:disabled { background: #aaa797; color: #57554d; cursor: not-allowed; }
+.endless-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; margin-top: 8px; }
+.endless-actions button { min-height: 38px; border-left: 2px solid var(--ink); margin-left: -2px; }
+.seed-panel p { margin: 8px 0 0; color: #68665c; font-size: 8px; line-height: 1.4; }
+
+@media (max-width: 900px) {
+  .arena-layout { grid-template-columns: 1fr; }
+  .fight-column { border-right: 0; border-bottom: 3px solid var(--ink); }
+  .bet-panel { min-height: 500px; }
+  .mast-meta p:first-child { display: none; }
+}
+@media (max-width: 600px) {
+  .masthead { grid-template-columns: 150px 1fr; min-height: 74px; }
+  .brand { padding: 18px; font-size: 19px; }
+  .mast-meta { justify-content: flex-end; padding: 0 12px; font-size: 9px; }
+  .mode-nav { grid-row: 2; grid-column: 1 / -1; min-height: 42px; border-top: 2px solid var(--ink); border-right: 0; }
+  .mode-nav a { flex: 1; }
+  .icon-button { grid-column: 1 / -1; width: 100%; height: 38px; border-left: 0; border-top: 2px solid var(--ink); }
+  main { padding: 14px 10px 0; }
+  .score-strip { grid-template-columns: 1fr auto; }
+  .score-pips { grid-row: 2; grid-column: 1 / -1; margin-top: 12px; }
+  .score-pips li { flex: 1; width: auto; }
+  .record { grid-column: 2; }
+  .match-title { min-height: 76px; grid-template-columns: 1fr 48px 1fr; padding: 8px; }
+  .fighter-name > span { display: none; }
+  .info-trigger > em { display: none; }
+  .controls { flex-wrap: wrap; }
+  .controls button { min-height: 40px; flex: 1; }
+  .seed-label { width: 100%; text-align: center; padding: 8px; border-top: 2px solid var(--ink); }
+}
+@media (prefers-reduced-motion: reduce) { * { animation-duration: .01ms !important; transition: none !important; } }
