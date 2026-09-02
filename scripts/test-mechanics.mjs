@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {stepProjectiles} from '../src/projectiles.js';
-import {collectWeaponWorldContact} from '../src/weapons.js';
+import {applyWeaponMotion,collectWeaponHit,collectWeaponWorldContact} from '../src/weapons.js';
 import {runBehaviorHook} from '../src/behaviors.js';
 import {getFighter} from '../src/fighters.js';
 import {simulateMatch} from '../src/headless-simulation.js';
@@ -39,6 +39,22 @@ for(const id of ['slugger','shotgun','sniper']){
   assert.equal(holder.vx,-120,`${id} should ricochet away from a right-wall attachment hit`);
   assert.equal(holder.angularVelocity,-2,`${id} attachment should reverse its rotation on contact`);
 }
+
+const slugger={f:getFighter('slugger'),x:100,y:150,radius:64,angle:0,angularVelocity:3,weaponCooldown:0,powerScale:1,vx:0,vy:0};
+const struck={f:{mass:1},x:205,y:150,radius:32,vx:100,vy:0};
+let batHit=collectWeaponHit(slugger,struck,1/60);
+assert.ok(batHit,'bat should connect with a fighter crossing its swing');
+assert.ok(Math.abs(batHit.impulseX)<1e-9,'a horizontal bat should not launch radially along its shaft');
+assert.equal(batHit.impulseY,245,'counterclockwise bat motion should launch along its positive tangent');
+applyWeaponMotion(batHit);
+assert.ok(Math.abs(struck.vx)<1e-9,'bat launch should fully redirect the target');
+assert.equal(struck.vy,850,'bat launch should enforce its minimum speed');
+slugger.weaponCooldown=0;slugger.angularVelocity=-3;
+struck.vx=0;struck.vy=1000;
+batHit=collectWeaponHit(slugger,struck,1/60);
+assert.equal(batHit.impulseY,-245,'clockwise bat motion should reverse the tangential launch');
+applyWeaponMotion(batHit);
+assert.equal(struck.vy,-1120,'a faster target should retain and multiply its speed along the new tangent');
 
 const first=simulateMatch(getFighter('shotgun'),getFighter('sniper'),'ranged-determinism');
 const second=simulateMatch(getFighter('shotgun'),getFighter('sniper'),'ranged-determinism');

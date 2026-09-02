@@ -1,7 +1,7 @@
 import './style.css';
 import { runBehaviorHook } from './behaviors.js';
 import { resolveElasticCollision } from './physics.js';
-import { collectWeaponHit, collectWeaponWorldContact, drawWeapon } from './weapons.js';
+import { applyWeaponMotion, collectWeaponHit, collectWeaponWorldContact, drawWeapon } from './weapons.js';
 import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { drawFighterIcon } from './icons.js';
 import { fighters, getFighter } from './fighters.js';
@@ -210,9 +210,7 @@ function resolveWeaponHits(hits,s){
   for(const hit of prepared)hit.victim.hp-=hit.event.damage;
   for(const hit of prepared){
     const {attacker,victim,event,context}=hit;
-    const invVictim=1/(victim.mass??victim.f.mass),invAttacker=1/(attacker.mass??attacker.f.mass);
-    victim.vx+=hit.impulseX*invVictim;victim.vy+=hit.impulseY*invVictim;
-    attacker.vx-=hit.impulseX*invAttacker*.18;attacker.vy-=hit.impulseY*invAttacker*.18;
+    applyWeaponMotion(hit);
     victim.flash=7;s.hitStop=Math.max(s.hitStop,Math.round(2+event.force*.25));
     runBehaviorHook(attacker,'dealHit',context);
     runBehaviorHook(victim,'takeHit',{...context,rival:attacker});

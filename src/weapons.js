@@ -18,15 +18,38 @@ export function collectWeaponHit(ball, rival, dt) {
   const awayX = rival.x - ball.x;
   const awayY = rival.y - ball.y;
   const awayLength = Math.hypot(awayX, awayY) || 1;
+  const spinDirection=Math.sign(ball.angularVelocity||weapon.angularSpeed||1);
+  const impulseDirection=weapon.type==='bat'
+    ? {x:-dy*spinDirection,y:dx*spinDirection}
+    : {x:awayX/awayLength,y:awayY/awayLength};
   return {
     attacker: ball,
     victim: rival,
     damage: weapon.damage * ball.f.power * ball.powerScale,
     force: Math.min(16, weapon.damage + weapon.knockback / 40),
-    impulseX: (awayX / awayLength) * weapon.knockback,
-    impulseY: (awayY / awayLength) * weapon.knockback,
+    impulseX: impulseDirection.x * weapon.knockback,
+    impulseY: impulseDirection.y * weapon.knockback,
+    redirect: weapon.type==='bat'?{
+      x:impulseDirection.x,
+      y:impulseDirection.y,
+      minimumSpeed:weapon.minimumLaunchSpeed,
+      speedMultiplier:weapon.speedMultiplier,
+    }:null,
     label: weapon.type === 'bat' ? 'KNOCK!' : 'SLASH!',
   };
+}
+
+export function applyWeaponMotion(hit){
+  const {attacker,victim}=hit;
+  const victimMass=victim.mass??victim.f.mass,attackerMass=attacker.mass??attacker.f.mass;
+  if(hit.redirect){
+    const currentSpeed=Math.hypot(victim.vx,victim.vy);
+    const launchSpeed=Math.max(hit.redirect.minimumSpeed,currentSpeed*hit.redirect.speedMultiplier);
+    victim.vx=hit.redirect.x*launchSpeed;victim.vy=hit.redirect.y*launchSpeed;
+  }else{
+    victim.vx+=hit.impulseX/victimMass;victim.vy+=hit.impulseY/victimMass;
+  }
+  attacker.vx-=hit.impulseX/attackerMass*.18;attacker.vy-=hit.impulseY/attackerMass*.18;
 }
 
 export function collectWeaponWorldContact(ball,bounds,hazards=[]){

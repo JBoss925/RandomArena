@@ -1,6 +1,6 @@
 import { runBehaviorHook } from './behaviors.js';
 import { resolveElasticCollision } from './physics.js';
-import { collectWeaponHit, collectWeaponWorldContact } from './weapons.js';
+import { applyWeaponMotion, collectWeaponHit, collectWeaponWorldContact } from './weapons.js';
 import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { createInitialBall } from './initial-conditions.js';
 import { contactForce } from './combat-config.js';
@@ -70,7 +70,7 @@ function resolveCombatEvents(events,sim,source){
     return {...item,event,context};
   });
   for(const hit of prepared)hit.victim.hp-=hit.event.damage;
-  for(const hit of prepared){if(hit.impulseX||hit.impulseY){const victimMass=hit.victim.mass??hit.victim.f.mass,attackerMass=hit.attacker.mass??hit.attacker.f.mass;hit.victim.vx+=hit.impulseX/victimMass;hit.victim.vy+=hit.impulseY/victimMass;hit.attacker.vx-=hit.impulseX/attackerMass*.18;hit.attacker.vy-=hit.impulseY/attackerMass*.18;sim.hitStop=Math.max(sim.hitStop,Math.round(2+hit.event.force*.25));}runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});}
+  for(const hit of prepared){if(hit.impulseX||hit.impulseY){applyWeaponMotion(hit);sim.hitStop=Math.max(sim.hitStop,Math.round(2+hit.event.force*.25));}runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});}
   const [left,right]=sim.balls;sim.lastExchange={tick:sim.ticks,source,before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
 
