@@ -24,8 +24,8 @@ const STEP = 1 / 60;
 const ARENA_BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const BUMPER_REFERENCE_SPEED=650;
 type GameMode='daily'|'endless'|'versus';
-type AppState={date:string;mode:GameMode;seed:string;versusLeft:string;versusRight:string;bouts:Bout[];index:number;selected:Side|null;highlightedSide:Side|null;running:boolean;paused:boolean;simulationSpeed:number;result:Winner|null;wins:number;losses:number;cardComplete:boolean;sound:boolean;sim:Simulation|null;accumulator:number;lastTime:number};
-const state:AppState = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
+type AppState={date:string;mode:GameMode;seed:string;versusLeft:string;versusRight:string;bouts:Bout[];index:number;selected:Side|null;highlightedSide:Side|null;running:boolean;paused:boolean;replaying:boolean;simulationSpeed:number;result:Winner|null;wins:number;losses:number;cardComplete:boolean;sound:boolean;sim:Simulation|null;accumulator:number;lastTime:number};
+const state:AppState = { date: localDateKey(), mode: 'daily', seed: '', versusLeft:'volt', versusRight:'brick', bouts: [], index: 0, selected: null, highlightedSide: null, running: false, paused: false, replaying:false, simulationSpeed:1, result: null, wins: 0, losses: 0, cardComplete: false, sound: true, sim: null, accumulator: 0, lastTime: 0 };
 
 function localDateKey() {
   const d = new Date();
@@ -78,7 +78,7 @@ function createSim(bout:Bout):Simulation {
 
 function setupBout() {
   const b = state.bouts[state.index];
-  state.selected = null; state.running = false; state.paused = false; state.result = null; state.sim = createSim(b); state.accumulator = 0;
+  state.selected = null; state.running = false; state.paused = false; state.replaying=false; state.result = null; state.sim = createSim(b); state.accumulator = 0;
   const num = String(state.index + 1).padStart(2,'0');
   $('left-name').textContent = $('left-pick-name').textContent = b.left.name;
   $('right-name').textContent = $('right-pick-name').textContent = b.right.name;
@@ -91,7 +91,7 @@ function setupBout() {
   $('lock-pick').disabled = true; $('lock-pick').hidden = state.mode==='versus'; $('pick-list').hidden = state.mode==='versus'; $('versus-controls').hidden=state.mode!=='versus'; $('result-card').hidden = true; $('result-card').classList.remove('loss','close-call');$('result-breakdown').hidden=true;
   $('arena-stamp').textContent = state.mode==='versus'?'READY':'TAKE YOUR PICK'; $('arena-stamp').classList.remove('hidden');
   $('bet-title').hidden=false;$('fight-instruction').hidden=false;
-  $('global-pause').textContent = 'Ⅱ PAUSE FIGHT'; $('global-pause').classList.remove('active');
+  $('global-pause').textContent = 'Ⅱ PAUSE FIGHT'; $('global-pause').setAttribute('aria-label','Pause fight'); $('global-pause').classList.remove('active');
   renderHazardTooltips(b.hazards);
   updatePips(); updateHud(); draw();
 }
@@ -147,6 +147,24 @@ function startFight() {
   if ((!state.selected&&state.mode!=='versus') || state.running) return;
   state.running = true; $('lock-pick').hidden = true; if(state.mode==='versus')$('versus-controls').hidden=true; $('arena-stamp').classList.add('hidden');$('hazard-tooltips').hidden=true;
   audioTone(110, .08, 'sawtooth', .12); setTimeout(() => audioTone(180, .09, 'square', .1), 80);
+}
+
+function setReplayControl():void{
+  $('global-pause').textContent='↻ REPLAY FIGHT';
+  $('global-pause').classList.remove('active');
+  $('global-pause').setAttribute('aria-label','Replay this fight from the same seed');
+}
+
+function replayFight():void{
+  if(!state.sim?.finished||state.running)return;
+  state.sim=createSim(state.bouts[state.index]);
+  state.running=true;state.paused=false;state.replaying=true;state.accumulator=0;
+  $('global-pause').textContent='Ⅱ PAUSE FIGHT';
+  $('global-pause').setAttribute('aria-label','Pause fight');
+  $('global-pause').classList.remove('active');
+  $('arena-stamp').classList.add('hidden');
+  $('hazard-tooltips').hidden=true;
+  updateHud();draw();
 }
 
 function renderHazardTooltips(hazards:Hazard[]):void{
@@ -312,10 +330,13 @@ function setDossier(side:Side,f:Fighter):void{
 }
 
 function finishFight(winner:Winner,resolution:Partial<Outcome>={mutualKo:false}):void {
-  const s=state.sim;if(!s)return;s.finished=true; state.running=false; state.result=winner;
-  $('bet-title').hidden=true;$('fight-instruction').hidden=true;
+  const s=state.sim;if(!s)return;s.finished=true; state.running=false;
+  if(!state.replaying)state.result=winner;
   const bout=state.bouts[state.index],name=winner==='left'?bout.left.name:winner==='right'?bout.right.name:'DRAW';
   $('arena-stamp').textContent=winner==='draw'?'DEAD HEAT':`${name} WINS`; $('arena-stamp').classList.remove('hidden');
+  setReplayControl();
+  if(state.replaying){state.replaying=false;return;}
+  $('bet-title').hidden=true;$('fight-instruction').hidden=true;
   renderCloseCall(resolution,bout);
   if(state.mode==='versus'){
     $('versus-controls').hidden=true;$('result-card').hidden=false;$('result-card').classList.remove('loss');$('result-title').textContent=resolution.mutualKo?'THAT WAS CLOSE':winner==='draw'?'DEAD HEAT':`${name} WINS`;
@@ -446,7 +467,7 @@ document.querySelectorAll<HTMLElement>('.pick-card').forEach(card=>{
   trigger.addEventListener('blur',()=>state.highlightedSide=null);
 });
 $('lock-pick').addEventListener('click',startFight);
-$('global-pause').addEventListener('click',()=>{if(!state.running)return;state.paused=!state.paused;$('global-pause').classList.toggle('active',state.paused);$('global-pause').textContent=state.paused?'▶ RESUME FIGHT':'Ⅱ PAUSE FIGHT';});
+$('global-pause').addEventListener('click',()=>{if(state.sim?.finished){replayFight();return;}if(!state.running)return;state.paused=!state.paused;$('global-pause').classList.toggle('active',state.paused);$('global-pause').textContent=state.paused?'▶ RESUME FIGHT':'Ⅱ PAUSE FIGHT';$('global-pause').setAttribute('aria-label',state.paused?'Resume fight':'Pause fight');});
 $('sound-toggle').addEventListener('click',()=>{state.sound=!state.sound;$('sound-toggle').textContent=`SOUND ${state.sound?'ON':'OFF'}`;if(state.sound)audioTone(420,.06,'sine',.05);});
 function setTheme(theme:'light'|'dark',{persist=true}:{persist?:boolean}={}):void{
   const dark=theme==='dark';
