@@ -63,7 +63,18 @@ export const behaviors:Record<string,Behavior>={
     beforeMove({ball}){ball.vx*=1.001;ball.vy*=1.001;},
     modifyOutgoing({ball,event}){event.damage+=Math.max(0,Math.min(12,(Math.hypot(ball.vx,ball.vy)-780)/65));},
     dealHit({ball,emitParticles,playSound}){ball.vx*=.86;ball.vy*=.86;pulse(ball,'cometImpact',16);emitParticles(ball,{count:10,color:'#ffc2d4',speed:300,gravity:0,kind:'star',size:7});playSound('whoosh');},
-    drawBack({ball,ctx}){const speed=Math.hypot(ball.vx,ball.vy)||1,nx=ball.vx/speed,ny=ball.vy/speed;ctx.save();ctx.strokeStyle=ball.f.color;ctx.lineWidth=ball.radius*.65;ctx.globalAlpha=.3;ctx.beginPath();ctx.moveTo(ball.x-nx*ball.radius*.6,ball.y-ny*ball.radius*.6);ctx.lineTo(ball.x-nx*Math.min(115,speed*.25),ball.y-ny*Math.min(115,speed*.25));ctx.stroke();ctx.restore();},
+    drawBack({ball,ctx}){
+      const speed=Math.hypot(ball.vx,ball.vy)||1,nx=ball.vx/speed,ny=ball.vy/speed;
+      const length=Math.max(ball.radius*.95,Math.min(225,100+(speed-500)*.5)),baseX=ball.x-nx*ball.radius*.55,baseY=ball.y-ny*ball.radius*.55;
+      const px=-ny,py=nx,halfWidth=ball.radius*.38,tipRadius=Math.max(6,ball.radius*.11);
+      const capX=ball.x-nx*(length-tipRadius),capY=ball.y-ny*(length-tipRadius),direction=Math.atan2(ny,nx);
+      ctx.save();ctx.fillStyle=ball.f.color;ctx.globalAlpha=.3;ctx.beginPath();
+      ctx.moveTo(baseX+px*halfWidth,baseY+py*halfWidth);
+      ctx.lineTo(capX+px*tipRadius,capY+py*tipRadius);
+      ctx.arc(capX,capY,tipRadius,direction+Math.PI/2,direction+Math.PI*1.5);
+      ctx.lineTo(baseX-px*halfWidth,baseY-py*halfWidth);
+      ctx.closePath();ctx.fill();ctx.restore();
+    },
   },
   fourthStrike:{
     modifyOutgoing({ball,event,sim}){if(ball.hits%4===0){event.damage+=13;event.staticBurst=true;sim.hitStop+=5;}},

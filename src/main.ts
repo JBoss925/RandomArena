@@ -656,7 +656,14 @@ addEventListener('popstate',()=>{
   setMode(mode,params.get('seed'),{push:false,left:params.get('left'),right:params.get('right')});
 });
 
-function showFinal(){const perfect=state.wins===5;$('result-title').textContent=perfect?'PERFECT 5 / 5':'CARD COMPLETE';$('result-copy').textContent=perfect?'Untouched. Unbeaten. Run the same seed again or start a new card.':`Final record: ${state.wins}—${state.losses}. ${state.mode==='daily'?'Come back tomorrow for five new fights.':'Try a new seed or replay this card.'}`;$('next-bout').textContent='REPLAY CARD →';}
+function showFinal(){
+  const perfect=state.wins===5,card=$('result-card');
+  card.classList.remove('loss','close-call');clearResultCardPalette();$('result-breakdown').hidden=true;
+  $('result-final-hp').textContent='';$('result-margin').textContent='';$('result-ruling').textContent='';
+  $('result-title').textContent=perfect?'PERFECT 5 / 5':'CARD COMPLETE';
+  $('result-copy').textContent=perfect?'Untouched. Unbeaten. Run the same seed again or start a new card.':`Final record: ${state.wins}—${state.losses}. ${state.mode==='daily'?'Come back tomorrow for five new fights.':'Try a new seed or replay this card.'}`;
+  $('next-bout').textContent='REPLAY CARD →';
+}
 
 function loop(t:number):void{if(!state.lastTime)state.lastTime=t;state.accumulator+=Math.min(.1,(t-state.lastTime)/1000)*state.simulationSpeed;state.lastTime=t;while(state.accumulator>=STEP){update(STEP);state.accumulator-=STEP;}updateHud();draw();requestAnimationFrame(loop);}
 
