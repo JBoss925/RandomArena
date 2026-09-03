@@ -81,7 +81,7 @@ export const soundSources={
     license:'CC0',
   },
   healing:{
-    localUrl:'/audio/healing.wav',
+    localUrl:'/audio/healing.mp3',
     volume:1,
     sourcePage:'https://opengameart.org/content/game-sound-effects',
     dataMp3Url:'https://opengameart.org/sites/default/files/Explosion.mp3',
@@ -90,13 +90,22 @@ export const soundSources={
     sourceFile:'Sounds(ZW).zip / Powerup.wav',
   },
   coin:{
-    localUrl:'/audio/goldie-coin.wav',
+    localUrl:'/audio/goldie-coin.mp3',
     volume:1,
     sourcePage:'https://opengameart.org/content/game-sound-effects',
     dataMp3Url:'https://opengameart.org/sites/default/files/Explosion.mp3',
     author:'KASTLE Knight',
     license:'CC0',
     sourceFile:'Sounds(ZW).zip / Coin.wav',
+  },
+  jackpot:{
+    localUrl:'/audio/goldie-jackpot.mp3',
+    volume:.65,
+    sourcePage:'https://opengameart.org/content/purchasing-sound-effect',
+    dataMp3Url:'https://opengameart.org/sites/default/files/snd_purchase_0.wav',
+    author:'Spring Spring',
+    license:'CC0',
+    sourceFile:'snd_purchase.wav',
   },
   burstFire:{
     localUrl:'/audio/burst-fire.mp3',
@@ -124,7 +133,7 @@ export const soundSources={
     license:'CC0',
   },
   completion:{
-    localUrl:'/audio/completion.wav',
+    localUrl:'/audio/completion.mp3',
     volume:1,
     sourcePage:'https://opengameart.org/content/game-sound-effects',
     dataMp3Url:'https://opengameart.org/sites/default/files/Explosion.mp3',
@@ -142,7 +151,7 @@ export const soundSources={
     sourceFile:'click_sound_1.mp3',
   },
   arenaTap:{
-    localUrl:'/audio/arena-tap.wav',
+    localUrl:'/audio/arena-tap.mp3',
     volume:1,
     sourcePage:'https://opengameart.org/content/game-sound-effects',
     dataMp3Url:'https://opengameart.org/sites/default/files/Explosion.mp3',
@@ -214,7 +223,7 @@ export const soundSources={
     sourceFile:'sfx_100_v2.zip / sfx100v2_hit_03.ogg',
   },
   flailRattle:{
-    localUrl:'/audio/flail-rattle.wav',
+    localUrl:'/audio/flail-rattle.mp3',
     volume:.9,
     sourcePage:'https://opengameart.org/content/mechanical-sounds',
     dataMp3Url:'https://opengameart.org/sites/default/files/audio_preview/clank1.wav.mp3',
@@ -223,7 +232,7 @@ export const soundSources={
     sourceFile:'rattle1.wav',
   },
   lanceWhoosh:{
-    localUrl:'/audio/lance-whoosh.wav',
+    localUrl:'/audio/lance-whoosh.mp3',
     volume:.9,
     sourcePage:'https://opengameart.org/content/swishes-sound-pack',
     dataMp3Url:'https://opengameart.org/sites/default/files/swishprev.mp3',
@@ -232,7 +241,7 @@ export const soundSources={
     sourceFile:'swishes.zip / swish-7.wav',
   },
   lanceHit:{
-    localUrl:'/audio/lance-hit.wav',
+    localUrl:'/audio/lance-hit.mp3',
     volume:.8,
     sourcePage:'https://opengameart.org/content/swishes-sound-pack',
     dataMp3Url:'https://opengameart.org/sites/default/files/swishprev.mp3',

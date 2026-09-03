@@ -108,7 +108,8 @@ for(const [cue,definition] of Object.entries(soundCues)){
   assert.ok(definition.file||definition.synth,`${cue} needs a recording or synthesized fallback`);
   if(definition.file)assert.ok(statSync(new URL(`../public${definition.file}`,import.meta.url)).size>2_000,`${cue} should map to an available audio file`);
 }
-assert.equal(soundCues.coin.file,'/audio/goldie-coin.wav','Goldie stacks should use the dedicated coin cue');
+assert.equal(soundCues.coin.file,'/audio/goldie-coin.mp3','Goldie stacks should use the dedicated coin cue');
+assert.equal(soundCues.jackpot.file,'/audio/goldie-jackpot.mp3','Goldie jackpot should use the dedicated cash-register cue');
 for(const cue of ['lanceCharge','lanceHit','grow','flail','magnetPull','magnetPush'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['droneLaunch','droneHit'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 assert.ok(soundCues.coin.volume>=.7,'Goldie stacks should remain audible in the combat mix');
