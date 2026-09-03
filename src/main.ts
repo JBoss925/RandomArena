@@ -130,6 +130,7 @@ function setMode(mode:GameMode,seed?:string|null,{push=true,left=state.versusLef
   $('random-seed').disabled=state.mode==='daily';
   $('seed-help').textContent=state.mode==='daily'?"Today's seed is locked, but you can copy it.":state.mode==='versus'?'Fighters and seed are encoded in this shareable URL.':'Enter any seed, load it, then share the link with a friend.';
   $('mode-label').textContent=state.mode==='daily'?'Daily fight card':state.mode==='versus'?'1v1 laboratory':'Endless fight card';
+  $('card-mode-label').textContent=state.mode==='daily'?"TODAY'S CARD":state.mode==='versus'?'VERSUS LAB':'ENDLESS MODE';
   $('today-label').textContent=state.mode==='daily'?new Date(state.date+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric',year:'numeric'}).toUpperCase():state.mode==='versus'?'HIDDEN TEST ROUTE':'ENDLESS EXHIBITION';
   $('bet-title').innerHTML=state.mode==='versus'?'BUILD A<br />1V1 FIGHT':'WHO LEAVES<br />THE RING?';
   $('fight-instruction').textContent=state.mode==='versus'?'Choose two fighters and run an open-arena deterministic matchup.':'Choose one fighter. The simulation is locked until your pick is in.';
