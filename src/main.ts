@@ -88,7 +88,7 @@ function createSim(bout:Bout):Simulation {
 function setupBout() {
   const b = state.bouts[state.index];
   state.selected = null; state.running = false; state.paused = false; state.replaying=false; state.result = null; state.sim = createSim(b); state.accumulator = 0;
-  setFighterPreview(null);
+  setFighterPreview(null);setExpandedPickInfo(null);
   const num = String(state.index + 1).padStart(2,'0');
   $('left-name').textContent = $('left-pick-name').textContent = b.left.name;
   $('right-name').textContent = $('right-pick-name').textContent = b.right.name;
@@ -549,13 +549,23 @@ function setFighterPreview(side:Side|null):void{
   if(dossierPreviewSide===side)return;
   dossierPreviewSide=side;
   (['left','right'] as Side[]).forEach(current=>$(current+'-info').classList.toggle('dossier-preview',current===side));
+}
+function setExpandedPickInfo(side:Side|null):void{
   document.querySelectorAll<HTMLElement>('.pick-info').forEach(button=>button.setAttribute('aria-expanded',String(button.dataset.pick===side)));
+}
+function dismissExpandedPickInfo():void{
+  setExpandedPickInfo(null);
+  const focused=document.activeElement;
+  if(focused instanceof HTMLElement&&focused.classList.contains('pick-info'))focused.blur();
 }
 document.querySelectorAll<HTMLElement>('.pick-info').forEach(button=>{
   const side=button.dataset.pick as Side;
-  button.addEventListener('click',()=>setFighterPreview(dossierPreviewSide===side?null:side));
-  button.addEventListener('blur',()=>{if(dossierPreviewSide===side)setFighterPreview(null);});
-  button.addEventListener('keydown',event=>{if(event.key==='Escape'){setFighterPreview(null);button.blur();}});
+  button.addEventListener('click',()=>{
+    const next=button.getAttribute('aria-expanded')==='true'?null:side;
+    setExpandedPickInfo(next);setFighterPreview(next);
+  });
+  button.addEventListener('blur',()=>{if(button.getAttribute('aria-expanded')==='true'){setExpandedPickInfo(null);if(dossierPreviewSide===side)setFighterPreview(null);}});
+  button.addEventListener('keydown',event=>{if(event.key==='Escape'){setExpandedPickInfo(null);setFighterPreview(null);button.blur();}});
 });
 (['left','right'] as Side[]).forEach(side=>{
   const trigger=$(side+'-info');
@@ -571,6 +581,7 @@ function updateArenaBallPreview():void{
   canvas.style.cursor=ball?'help':'default';
 }
 canvas.addEventListener('pointermove',event=>{
+  dismissExpandedPickInfo();
   const bounds=canvas.getBoundingClientRect();
   arenaPointer={x:(event.clientX-bounds.left)*W/bounds.width,y:(event.clientY-bounds.top)*H/bounds.height};
   updateArenaBallPreview();
