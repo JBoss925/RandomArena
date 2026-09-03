@@ -54,6 +54,8 @@ export const soundCues:Record<SoundCue,SoundDefinition>={
   flail:{file:'/audio/flail-rattle.wav',volume:.38,rate:1.18,variance:.06,cooldownMs:150},
   magnetPull:{file:'/audio/laser-fire.mp3',volume:.22,rate:1.9,variance:.04,cooldownMs:120},
   magnetPush:{file:'/audio/laser-fire.mp3',volume:.38,rate:.72,variance:.04,cooldownMs:120},
+  droneLaunch:{file:'/audio/laser-fire.mp3',volume:.28,rate:1.28,variance:.06,cooldownMs:120},
+  droneHit:{file:'/audio/mechanical-clank.mp3',volume:.32,rate:1.22,variance:.06,cooldownMs:90},
   root:{volume:.2,rate:1,synth:'rustle',cooldownMs:160},
   echo:{file:'/audio/teleport.mp3',volume:.15,rate:1.9,variance:.08,cooldownMs:90},
   siphon:{volume:.16,rate:1,synth:'drain',cooldownMs:100},

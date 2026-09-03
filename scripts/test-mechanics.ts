@@ -27,6 +27,16 @@ const obstacle:Hazard={id:'test',type:'pillar',x:145,y:100,r:10,value:0};
 assert.equal(stepProjectiles(sim,.1,bounds,[obstacle]).length,0,'terrain before a fighter should absorb the projectile');
 assert.equal(sim.projectiles.length,0);
 
+const seeker:Projectile={shooter,side:'left',x:80,y:80,previousX:80,previousY:80,vx:100,vy:0,radius:4,damage:8,force:7,life:30,type:'heatseeker',color:'#c8ff65',dead:false,homingAcceleration:100,maxSpeed:300,turnRate:1};
+Object.assign(target,{x:230,y:180,radius:12,hp:100});sim={balls:[shooter,target],projectiles:[seeker]};
+stepProjectiles(sim,.1,bounds);
+assert.ok(seeker.vy>0,'a heatseeker should turn toward an offset target');
+assert.ok(Math.abs(Math.hypot(seeker.vx,seeker.vy)-110)<.001,'a heatseeker should accelerate deterministically toward its speed ceiling');
+const mothership=makeBall('mothership','left');Object.assign(mothership,{carrierCooldown:1});
+const carrierSim={balls:[mothership,target],projectiles:[],ticks:1,hitStop:0} as never;
+runBehaviorHook(mothership,'tick',{sim:carrierSim,rival:target,event:{dt:1/60,force:0,damage:0},random:()=>.5});
+assert.equal((carrierSim as {projectiles:Projectile[]}).projectiles[0]?.type,'heatseeker','Mothership should launch a triangular heatseeker when its bay is ready');
+
 const saber=makeBall('saber','left');Object.assign(saber,{x:260,y:150,radius:64,angle:0,angularVelocity:2,weaponWorldCooldown:0,vx:120,vy:35});
 assert.ok(collectWeaponWorldContact(saber,bounds));
 assert.equal(saber.angularVelocity,-2,'wall contact should reverse a melee attachment');
@@ -99,6 +109,7 @@ for(const [cue,definition] of Object.entries(soundCues)){
 }
 assert.equal(soundCues.coin.file,'/audio/goldie-coin.wav','Goldie stacks should use the dedicated coin cue');
 for(const cue of ['lanceCharge','lanceHit','grow','flail','magnetPull','magnetPush'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
+for(const cue of ['droneLaunch','droneHit'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 assert.ok(soundCues.coin.volume>=.7,'Goldie stacks should remain audible in the combat mix');
 assert.ok(soundCues.bodyContact.file,'ordinary fighter collisions need an audible foundation recording');
 assert.ok(soundCues.wallContact.file,'ordinary arena contacts need an audible foundation recording');

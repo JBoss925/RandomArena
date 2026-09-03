@@ -277,7 +277,8 @@ function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   const before={left:s.balls[0].hp,right:s.balls[1].hp};
   const prepared=hits.map(hit=>{
     const attacker=hit.projectile.shooter,victim=hit.target;attacker.hits++;victim.incoming++;
-    const event={force:hit.projectile.force,damage:hit.projectile.damage,weapon:true,projectile:true};
+    const seeker=hit.projectile.type==='heatseeker',interceptScale=seeker?1+Math.min(1.5,Math.hypot(victim.vx,victim.vy)/550):1;
+    const event={force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker};
     const context={sim:s,rival:victim,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     runBehaviorHook(attacker,'modifyOutgoing',context);runBehaviorHook(victim,'modifyIncoming',{...context,rival:attacker});
     return{...hit,attacker,victim,event,context};
@@ -285,9 +286,10 @@ function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   for(const hit of prepared)hit.victim.hp-=hit.event.damage;
   for(const hit of prepared){
     hit.victim.flash=8;runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});
-    impact(hit.projectile.type==='sniper'?'HEADSHOT!':'PELLET!',{x:hit.x,y:hit.y});
+    impact(hit.projectile.type==='sniper'?'HEADSHOT!':hit.projectile.type==='heatseeker'?'SEEKER HIT!':'PELLET!',{x:hit.x,y:hit.y});
+    if(hit.projectile.type==='heatseeker')playSound('droneHit');
     materialContact({x:hit.x,y:hit.y},'metal',hit.victim.f.material,hit.event.force,{balls:[hit.victim],volume:hit.projectile.type==='sniper'?1.25:.8});
-    emitParticles({x:hit.x,y:hit.y},{count:hit.projectile.type==='sniper'?12:4,color:hit.projectile.color,speed:hit.projectile.type==='sniper'?470:330,gravity:180,kind:hit.projectile.type==='sniper'?'star':'spark',size:hit.projectile.type==='sniper'?9:6});
+    emitParticles({x:hit.x,y:hit.y},{count:hit.projectile.type==='sniper'?12:hit.projectile.type==='heatseeker'?16:4,color:hit.projectile.color,speed:hit.projectile.type==='sniper'?470:hit.projectile.type==='heatseeker'?410:330,gravity:180,kind:hit.projectile.type==='heatseeker'?'star':hit.projectile.type==='sniper'?'star':'spark',size:hit.projectile.type==='sniper'?9:hit.projectile.type==='heatseeker'?8:6});
   }
   const [left,right]=s.balls;s.lastExchange={tick:s.ticks,source:'projectile volley',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
@@ -420,7 +422,15 @@ function draw():void {
 }
 
 function drawProjectiles(projectiles:Projectile[]):void{
-  for(const p of projectiles){ctx.save();ctx.strokeStyle=p.color;ctx.fillStyle=p.type==='sniper'?'#f3efdf':p.color;ctx.lineWidth=p.type==='sniper'?5:3;ctx.beginPath();ctx.moveTo(p.previousX,p.previousY);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();ctx.restore();}
+  for(const p of projectiles){
+    ctx.save();
+    if(p.type==='heatseeker'){
+      const angle=Math.atan2(p.vy,p.vx);ctx.translate(p.x,p.y);ctx.rotate(angle);ctx.strokeStyle='#151515';ctx.fillStyle=p.color;ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(p.radius*1.5,0);ctx.lineTo(-p.radius,-p.radius);ctx.lineTo(-p.radius,p.radius);ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ff8a31';ctx.beginPath();ctx.moveTo(-p.radius-2,-p.radius*.55);ctx.lineTo(-p.radius-10,0);ctx.lineTo(-p.radius-2,p.radius*.55);ctx.closePath();ctx.fill();ctx.restore();continue;
+    }
+    ctx.strokeStyle=p.color;ctx.fillStyle=p.type==='sniper'?'#f3efdf':p.color;ctx.lineWidth=p.type==='sniper'?5:3;ctx.beginPath();ctx.moveTo(p.previousX,p.previousY);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();ctx.restore();
+  }
 }
 
 function drawEffectParticle(p:Particle):void{

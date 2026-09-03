@@ -20,6 +20,14 @@ export function fireRangedWeapon(ball:Ball,sim:Simulation):({label:string}&Point
 export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:number,bounds:Bounds,hazards:Hazard[]=[]):ProjectileHit[]{
   const hits:ProjectileHit[]=[];
   for(const projectile of sim.projectiles){
+    projectile.armingFrames=Math.max(0,(projectile.armingFrames??0)-1);
+    const target=sim.balls.find(ball=>ball.side!==projectile.side&&ball.hp>0);
+    if(projectile.type==='heatseeker'&&target){
+      const currentAngle=Math.atan2(projectile.vy,projectile.vx),targetAngle=Math.atan2(target.y-projectile.y,target.x-projectile.x);
+      const turn=Math.max(-(projectile.turnRate??2.2)*dt,Math.min((projectile.turnRate??2.2)*dt,angleDifference(targetAngle,currentAngle)));
+      const speed=Math.min(projectile.maxSpeed??760,Math.hypot(projectile.vx,projectile.vy)+(projectile.homingAcceleration??360)*dt);
+      projectile.vx=Math.cos(currentAngle+turn)*speed;projectile.vy=Math.sin(currentAngle+turn)*speed;
+    }
     const from={x:projectile.x,y:projectile.y},to={x:projectile.x+projectile.vx*dt,y:projectile.y+projectile.vy*dt};
     projectile.previousX=from.x;projectile.previousY=from.y;
     let first:SegmentHit|null=boundaryHit(from,to,bounds,projectile.radius);
@@ -27,8 +35,7 @@ export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:nu
       const hit=segmentCircleHit(from,to,hazard.x,hazard.y,hazard.r+projectile.radius);
       if(hit&&(!first||hit.t<first.t))first={...hit,type:'world'};
     }
-    const target=sim.balls.find(ball=>ball.side!==projectile.side&&ball.hp>0);
-    if(target){
+    if(target&&!projectile.armingFrames){
       const hit=segmentCircleHit(from,to,target.x,target.y,target.radius+projectile.radius);
       if(hit&&(!first||hit.t<first.t))first={...hit,type:'fighter',target};
     }
@@ -39,6 +46,10 @@ export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:nu
   }
   sim.projectiles=sim.projectiles.filter(projectile=>!projectile.dead);
   return hits;
+}
+
+function angleDifference(target:number,current:number):number{
+  return Math.atan2(Math.sin(target-current),Math.cos(target-current));
 }
 
 function segmentCircleHit(from:Point,to:Point,cx:number,cy:number,radius:number):SegmentHit|null{

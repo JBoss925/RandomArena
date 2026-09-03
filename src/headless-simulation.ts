@@ -10,7 +10,7 @@ import type { Ball, CombatEvent, Fighter, Outcome, ProjectileHit, Simulation, We
 const W=720,H=720,DT=1/60,BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const noop=()=>{};
 export type MatchResult=Omit<Partial<Outcome>,'winner'>&{winner:Winner;hp:{left:number;right:number};ticks:number;events:Record<string,number>};
-type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean};
+type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean};
 
 export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:string,{maxTicks=60*40}:{maxTicks?:number}={}):MatchResult{
   const rng=mulberry32(hashString(`balance:v1:${seed}`));
@@ -59,14 +59,14 @@ function resolveWeaponHits(hits:WeaponHit[],sim:Simulation):void{
 
 function resolveProjectileHits(hits:ProjectileHit[],sim:Simulation):void{
   if(!hits.length)return;
-  resolveCombatEvents(hits.map(hit=>({attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage,weapon:true,projectile:true})),sim,'projectile volley');
+  resolveCombatEvents(hits.map(hit=>{const seeker=hit.projectile.type==='heatseeker',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker};}),sim,'projectile volley');
 }
 
 function resolveCombatEvents(events:CombatItem[],sim:Simulation,source:string):void{
   const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
   const prepared=events.map(item=>{
     item.attacker.hits++;item.victim.incoming++;
-    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile)};
+    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable)};
     const context=ctx(sim,item.victim,event);
     runBehaviorHook(item.attacker,'modifyOutgoing',context);
     runBehaviorHook(item.victim,'modifyIncoming',{...context,rival:item.attacker});

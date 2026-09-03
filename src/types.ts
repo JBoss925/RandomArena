@@ -2,7 +2,7 @@ export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
 export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
-export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -114,6 +114,7 @@ export type Ball = Point & {
   flailReach?: number;
   flailCooldown?: number;
   polarity?: 1|-1;
+  carrierCooldown?: number;
 };
 
 export type CombatEvent = {
@@ -137,6 +138,7 @@ export type CombatEvent = {
 };
 
 export type Echo = { attacker: Ball; victim: Ball; frames: number; damage: number };
+export type ProjectileType = RangedWeapon['type']|'heatseeker';
 export type Projectile = Point & {
   shooter: Ball;
   side: Side;
@@ -149,8 +151,12 @@ export type Projectile = Point & {
   force: number;
   life: number;
   color: string;
-  type: RangedWeapon['type'];
+  type: ProjectileType;
   dead: boolean;
+  homingAcceleration?: number;
+  maxSpeed?: number;
+  turnRate?: number;
+  armingFrames?: number;
 };
 
 export type Particle = Point & {
