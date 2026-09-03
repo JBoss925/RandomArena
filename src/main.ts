@@ -88,9 +88,14 @@ function createSim(bout:Bout):Simulation {
 function setupBout() {
   const b = state.bouts[state.index];
   state.selected = null; state.running = false; state.paused = false; state.replaying=false; state.result = null; state.sim = createSim(b); state.accumulator = 0;
+  setFighterPreview(null);
   const num = String(state.index + 1).padStart(2,'0');
   $('left-name').textContent = $('left-pick-name').textContent = b.left.name;
   $('right-name').textContent = $('right-pick-name').textContent = b.right.name;
+  document.querySelector<HTMLElement>('.pick-select[data-pick="left"]')?.setAttribute('aria-label',`Pick ${b.left.name}`);
+  document.querySelector<HTMLElement>('.pick-select[data-pick="right"]')?.setAttribute('aria-label',`Pick ${b.right.name}`);
+  document.querySelector<HTMLElement>('.pick-info[data-pick="left"]')?.setAttribute('aria-label',`Toggle ${b.left.name} fighter information`);
+  document.querySelector<HTMLElement>('.pick-info[data-pick="right"]')?.setAttribute('aria-label',`Toggle ${b.right.name} fighter information`);
   setDossier('left', b.left); setDossier('right', b.right);
   $('left-number').textContent = String(fighters.indexOf(b.left)+1).padStart(2,'0'); $('right-number').textContent = String(fighters.indexOf(b.right)+1).padStart(2,'0');
   const hazardNames=b.hazards.length?b.hazards.map(h=>h.type.toUpperCase()).join(' + '):'OPEN';
@@ -401,6 +406,7 @@ function applyAdaptiveCardPalette(card:HTMLElement,background:string,backgroundP
 
 function draw():void {
   const s=state.sim;if(!s)return;ctx.clearRect(0,0,W,H); ctx.fillStyle='#d9d4c2'; ctx.fillRect(0,0,W,H);
+  if(arenaPointer)updateArenaBallPreview();
   ctx.strokeStyle='#777468'; ctx.globalAlpha=.27; ctx.lineWidth=1;
   for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();} for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();} ctx.globalAlpha=1;
   ctx.strokeStyle='#151515';ctx.lineWidth=8;ctx.strokeRect(24,76,W-48,H-100);
@@ -536,12 +542,20 @@ function audioTone(freq:number,duration:number,type:OscillatorType='sine',volume
 function audioHit(power:number):void{if(state.soundVolume<=0)return;audioTone(70+power*100,.07,'square',.03+power*.08);}
 function playSound(cue:SoundCue,options?:SoundCueOptions):void{playLibrarySound(cue,{...options,enabled:state.soundVolume>0,volume:(options?.volume??1)*state.soundVolume,random:state.sim?.visualRng});}
 
-document.querySelectorAll<HTMLElement>('.pick-card').forEach(btn=>btn.addEventListener('click',()=>{if(state.running)return;state.selected=btn.dataset.pick as Side;document.querySelectorAll('.pick-card').forEach(x=>x.classList.toggle('selected',x===btn));$('lock-pick').disabled=false;audioTone(260,.05,'square',.05);}));
-document.querySelectorAll<HTMLElement>('.pick-card').forEach(card=>{
-  card.addEventListener('pointerenter',()=>state.highlightedSide=card.dataset.pick as Side);
-  card.addEventListener('pointerleave',()=>state.highlightedSide=null);
-  card.addEventListener('focus',()=>state.highlightedSide=card.dataset.pick as Side);
-  card.addEventListener('blur',()=>state.highlightedSide=null);
+document.querySelectorAll<HTMLElement>('.pick-select').forEach(btn=>btn.addEventListener('click',()=>{if(state.running)return;state.selected=btn.dataset.pick as Side;document.querySelectorAll<HTMLElement>('.pick-card').forEach(card=>card.classList.toggle('selected',card.dataset.pick===state.selected));$('lock-pick').disabled=false;audioTone(260,.05,'square',.05);}));
+let dossierPreviewSide:Side|null=null;
+function setFighterPreview(side:Side|null):void{
+  state.highlightedSide=side;
+  if(dossierPreviewSide===side)return;
+  dossierPreviewSide=side;
+  (['left','right'] as Side[]).forEach(current=>$(current+'-info').classList.toggle('dossier-preview',current===side));
+  document.querySelectorAll<HTMLElement>('.pick-info').forEach(button=>button.setAttribute('aria-expanded',String(button.dataset.pick===side)));
+}
+document.querySelectorAll<HTMLElement>('.pick-info').forEach(button=>{
+  const side=button.dataset.pick as Side;
+  button.addEventListener('click',()=>setFighterPreview(dossierPreviewSide===side?null:side));
+  button.addEventListener('blur',()=>{if(dossierPreviewSide===side)setFighterPreview(null);});
+  button.addEventListener('keydown',event=>{if(event.key==='Escape'){setFighterPreview(null);button.blur();}});
 });
 (['left','right'] as Side[]).forEach(side=>{
   const trigger=$(side+'-info');
@@ -550,6 +564,18 @@ document.querySelectorAll<HTMLElement>('.pick-card').forEach(card=>{
   trigger.addEventListener('focus',()=>state.highlightedSide=side);
   trigger.addEventListener('blur',()=>state.highlightedSide=null);
 });
+let arenaPointer:Point|null=null;
+function updateArenaBallPreview():void{
+  const ball=arenaPointer&&state.sim?.balls.find(candidate=>Math.hypot(candidate.x-arenaPointer!.x,candidate.y-arenaPointer!.y)<=candidate.radius);
+  setFighterPreview(ball?.side??null);
+  canvas.style.cursor=ball?'help':'default';
+}
+canvas.addEventListener('pointermove',event=>{
+  const bounds=canvas.getBoundingClientRect();
+  arenaPointer={x:(event.clientX-bounds.left)*W/bounds.width,y:(event.clientY-bounds.top)*H/bounds.height};
+  updateArenaBallPreview();
+});
+canvas.addEventListener('pointerleave',()=>{arenaPointer=null;setFighterPreview(null);canvas.style.cursor='default';});
 $('lock-pick').addEventListener('click',startFight);
 $('global-pause').addEventListener('click',()=>{if(state.sim?.finished){replayFight();return;}if(!state.running)return;state.paused=!state.paused;$('global-pause').classList.toggle('active',state.paused);$('global-pause').textContent=state.paused?'▶ RESUME FIGHT':'Ⅱ PAUSE FIGHT';$('global-pause').setAttribute('aria-label',state.paused?'Resume fight':'Pause fight');});
 const helpDialog=$('how-to-play') as unknown as HTMLDialogElement;

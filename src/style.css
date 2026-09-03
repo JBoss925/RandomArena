@@ -46,7 +46,8 @@ button { cursor: pointer; }
 .mast-actions { display: flex; align-items: stretch; }
 .help-button { width: 54px; padding: 0; display: grid; place-items: center; border: 0; border-left: var(--structure-rule) solid var(--ink); background: transparent; color: var(--ink); }
 .help-button:hover { background: var(--acid); color: #151515; }
-.help-button svg { width: 31px; height: 31px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: square; stroke-linejoin: miter; }
+.help-button span { width: 22px; height: 22px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; font: 12px "Archivo Black"; line-height: 1; }
+.help-button:hover span { background: #151515; color: #fff; border-color: #151515; }
 .icon-button { border: 0; border-left: var(--structure-rule) solid var(--ink); background: transparent; width: 126px; font-size: 11px; font-weight: 600; }
 .icon-button:hover { background: var(--acid); color: #151515; }
 .volume-control { display: grid; grid-template-columns: 43px 86px 30px; align-items: center; gap: 7px; padding: 0 9px 0 0; border-left: var(--structure-rule) solid var(--ink); --volume-fill: 50%; }
@@ -117,10 +118,10 @@ main { max-width: 1500px; margin: 0 auto; padding: 22px 28px 64px; }
 .info-trigger > em { position: absolute; left: 44px; right: auto; bottom: -15px; font: 600 7px "IBM Plex Mono"; letter-spacing: .12em; white-space: nowrap; }
 .right-name.info-trigger > em { left: auto; right: 44px; }
 .info-trigger h1 { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 7px; text-decoration-color: transparent; transition: text-decoration-color .12s; }
-.info-trigger:hover h1, .info-trigger:focus h1 { text-decoration-color: var(--acid); }
-.fighter-dossier { position: absolute; z-index: 20; top: calc(100% + 14px); left: 0; width: min(350px, 82vw); padding: 15px; border: 3px solid var(--ink); background: var(--acid); color: #151515; box-shadow: 6px 6px 0 var(--ink); text-align: left; opacity: 0; visibility: hidden; translate: 0 -5px; transition: opacity .12s, translate .12s, visibility .12s; }
+.info-trigger:hover h1, .info-trigger:focus h1, .info-trigger.dossier-preview h1 { text-decoration-color: var(--acid); }
+.fighter-dossier { position: absolute; z-index: 20; top: calc(100% + 14px); left: 0; width: min(350px, 82vw); padding: 15px; border: 3px solid var(--ink); background: var(--acid); color: #151515; box-shadow: 6px 6px 0 var(--ink); text-align: left; pointer-events: none; opacity: 0; visibility: hidden; translate: 0 -5px; transition: opacity .12s, translate .12s, visibility .12s; }
 .right-name .fighter-dossier { left: auto; right: 0; }
-.info-trigger:hover .fighter-dossier, .info-trigger:focus .fighter-dossier, .info-trigger:focus-within .fighter-dossier { opacity: 1; visibility: visible; translate: 0; }
+.info-trigger:hover .fighter-dossier, .info-trigger:focus .fighter-dossier, .info-trigger:focus-within .fighter-dossier, .info-trigger.dossier-preview .fighter-dossier { opacity: 1; visibility: visible; translate: 0; }
 .fighter-dossier strong { display: block; font: 14px "Archivo Black"; margin-bottom: 6px; }
 .fighter-dossier p { margin: 0; font: 9px/1.55 "IBM Plex Mono"; letter-spacing: 0; }
 .dossier-specs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 12px; }
@@ -212,13 +213,20 @@ canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
 .stats-table tbody tr:last-child td { border-bottom: 0; }
 .stats-table tbody tr:hover { background: var(--acid); color: #151515; }
 .pick-list { border-top: var(--structure-rule) solid var(--ink); }
-.pick-card { width: 100%; min-height: 76px; display: grid; grid-template-columns: 42px 1fr 20px; gap: 11px; align-items: center; text-align: left; padding: 10px 18px; border: 0; border-bottom: var(--structure-rule) solid var(--ink); background: transparent; }
+.pick-card { position: relative; width: 100%; min-height: 76px; display: grid; grid-template-columns: 42px 1fr 20px; gap: 11px; align-items: center; text-align: left; padding: 10px 18px; border: 0; border-bottom: var(--structure-rule) solid var(--ink); background: transparent; }
 .pick-card:hover { background: var(--surface); }
 .pick-card.selected { background: var(--acid); color: #151515; }
+.pick-select { position: absolute; z-index: 0; inset: 0; width: 100%; border: 0; background: transparent; cursor: pointer; }
+.pick-select:focus-visible { outline: 3px solid var(--ink); outline-offset: -5px; }
+.pick-ball,.pick-copy,.pick-arrow { position: relative; z-index: 1; pointer-events: none; }
 .pick-ball { width: 34px; height: 34px; border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
 .pick-card small { display: block; font-size: 8px; letter-spacing: .1em; margin-bottom: 4px; }
 .pick-card strong { font: 18px "Archivo Black"; }
-.pick-card b { font-size: 18px; }
+.pick-fighter-line { display: flex; align-items: center; gap: 8px; }
+.pick-info { position: relative; z-index: 2; pointer-events: auto; width: 22px; height: 22px; display: grid; place-items: center; padding: 0; border: 2px solid currentColor; border-radius: 50%; background: transparent; color: inherit; font: 12px "Archivo Black"; line-height: 1; cursor: pointer; }
+.pick-info:hover,.pick-info:focus-visible,.pick-info[aria-expanded="true"] { background: var(--ink); color: var(--paper); outline: none; }
+.pick-card.selected .pick-info:hover,.pick-card.selected .pick-info:focus-visible,.pick-card.selected .pick-info[aria-expanded="true"] { background: #151515; color: #fff; }
+.pick-arrow { font-size: 18px; }
 .lock-button, .result-card button { margin: 18px; min-height: 54px; border: 3px solid var(--ink); background: var(--ink); color: var(--paper); font: 13px "Archivo Black"; box-shadow: 5px 5px 0 var(--red); }
 .lock-button:not(:disabled):hover { color: var(--accent-text); translate: 2px 2px; box-shadow: 3px 3px 0 var(--red); }
 .result-card button:hover { color: var(--acid); translate: 2px 2px; box-shadow: 3px 3px 0 var(--red); }

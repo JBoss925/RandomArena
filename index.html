@@ -25,7 +25,7 @@
         </div>
         <div class="mast-actions">
           <button class="help-button" id="help-open" type="button" aria-label="How to play" title="How to play">
-            <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11.5"/><path d="M12.5 12.4c.3-2.3 1.8-3.6 4.1-3.6 2.5 0 4.1 1.5 4.1 3.7 0 1.8-.9 2.8-2.7 3.9-1.5.9-2 1.7-2 3.2v.6M16 24.2h.01"/></svg>
+            <span aria-hidden="true">?</span>
           </button>
           <div class="volume-control" id="volume-control">
             <button id="volume-mute" type="button" aria-label="Mute sound" title="Mute sound">
@@ -137,12 +137,18 @@
               <button id="start-versus" type="button">START 1V1</button>
             </div>
             <div class="pick-list" id="pick-list">
-              <button class="pick-card left-pick" data-pick="left" type="button">
-                <span class="pick-ball left-dot"></span><span><small>FIGHTER A</small><strong id="left-pick-name">VOLT</strong></span><b>↗</b>
-              </button>
-              <button class="pick-card right-pick" data-pick="right" type="button">
-                <span class="pick-ball right-dot"></span><span><small>FIGHTER B</small><strong id="right-pick-name">BRICK</strong></span><b>↗</b>
-              </button>
+              <div class="pick-card left-pick" data-pick="left">
+                <button class="pick-select" data-pick="left" type="button" aria-label="Pick Volt"></button>
+                <span class="pick-ball left-dot"></span>
+                <span class="pick-copy"><small>FIGHTER A</small><span class="pick-fighter-line"><strong id="left-pick-name">VOLT</strong><button class="pick-info" data-pick="left" type="button" aria-label="Toggle Volt fighter information" aria-controls="left-dossier" aria-expanded="false">?</button></span></span>
+                <b class="pick-arrow">↗</b>
+              </div>
+              <div class="pick-card right-pick" data-pick="right">
+                <button class="pick-select" data-pick="right" type="button" aria-label="Pick Brick"></button>
+                <span class="pick-ball right-dot"></span>
+                <span class="pick-copy"><small>FIGHTER B</small><span class="pick-fighter-line"><strong id="right-pick-name">BRICK</strong><button class="pick-info" data-pick="right" type="button" aria-label="Toggle Brick fighter information" aria-controls="right-dossier" aria-expanded="false">?</button></span></span>
+                <b class="pick-arrow">↗</b>
+              </div>
             </div>
             <button id="lock-pick" class="lock-button" type="button" disabled>LOCK PICK &amp; FIGHT</button>
             <div id="result-card" class="result-card" hidden>
