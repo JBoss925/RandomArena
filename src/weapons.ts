@@ -35,7 +35,7 @@ export function collectWeaponHit(ball:Ball, rival:Ball, _dt:number):WeaponHit|nu
       minimumSpeed:weapon.minimumLaunchSpeed??0,
       speedMultiplier:weapon.speedMultiplier??1,
     }:null,
-    label: weapon.type === 'bat' ? 'KNOCK!' : 'SLASH!',
+    label: weapon.type === 'bat' ? 'KNOCK!' : weapon.type === 'lance' ? ((ball.joustFrames??0)>0?'JOUST!':'PRICK!') : 'SLASH!',
   };
 }
 
@@ -99,6 +99,12 @@ export function drawWeapon(ctx:CanvasRenderingContext2D, ball:Ball):void {
     ctx.strokeStyle = '#f4f5ef'; ctx.lineWidth = weapon.width;
     ctx.beginPath(); ctx.moveTo(bladeStart, 0); ctx.lineTo(tip, 0); ctx.stroke();
     ctx.fillStyle = '#151515'; ctx.fillRect(bladeStart - 7, -15, 8, 30);
+  } else if(weapon.type === 'lance') {
+    const gripStart=ball.radius*.3,shaftEnd=ball.radius+weapon.length-22,tip=ball.radius+weapon.length;
+    ctx.strokeStyle='#151515';ctx.lineWidth=weapon.width+6;ctx.beginPath();ctx.moveTo(gripStart,0);ctx.lineTo(shaftEnd,0);ctx.stroke();
+    ctx.strokeStyle=(ball.joustFrames??0)>0?'#feed9a':'#8a5a2f';ctx.lineWidth=weapon.width;ctx.beginPath();ctx.moveTo(gripStart,0);ctx.lineTo(shaftEnd,0);ctx.stroke();
+    ctx.fillStyle='#151515';ctx.beginPath();ctx.moveTo(shaftEnd-2,-weapon.width);ctx.lineTo(tip+4,0);ctx.lineTo(shaftEnd-2,weapon.width);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#f4f5ef';ctx.beginPath();ctx.moveTo(shaftEnd,-weapon.width+4);ctx.lineTo(tip,0);ctx.lineTo(shaftEnd,weapon.width-4);ctx.closePath();ctx.fill();
   } else if(weapon.projectile){
     const start=ball.radius*.4,end=ball.radius+weapon.length;
     ctx.strokeStyle='#151515';ctx.lineWidth=weapon.width+6;ctx.beginPath();ctx.moveTo(start,0);ctx.lineTo(end,0);ctx.stroke();

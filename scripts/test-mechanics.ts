@@ -98,6 +98,7 @@ for(const [cue,definition] of Object.entries(soundCues)){
   if(definition.file)assert.ok(statSync(new URL(`../public${definition.file}`,import.meta.url)).size>2_000,`${cue} should map to an available audio file`);
 }
 assert.equal(soundCues.coin.file,'/audio/goldie-coin.wav','Goldie stacks should use the dedicated coin cue');
+for(const cue of ['lanceCharge','lanceHit','grow','flail','magnetPull','magnetPush'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 assert.ok(soundCues.coin.volume>=.7,'Goldie stacks should remain audible in the combat mix');
 assert.ok(soundCues.bodyContact.file,'ordinary fighter collisions need an audible foundation recording');
 assert.ok(soundCues.wallContact.file,'ordinary arena contacts need an audible foundation recording');
@@ -106,6 +107,21 @@ const goldie=makeBall('goldie','left'),goldieSounds:string[]=[];
 runBehaviorHook(goldie,'dealHit',{event:{damage:5,force:5},playSound:cue=>goldieSounds.push(cue)});
 runBehaviorHook(goldie,'dealHit',{event:{damage:17,force:5,jackpot:true},playSound:cue=>goldieSounds.push(cue)});
 assert.deepEqual(goldieSounds,['coin','jackpot'],'Goldie should sound both a stack gain and jackpot cashout');
+const lance=makeBall('lance','left'),lanceRival=makeBall('brick','right');
+Object.assign(lance,{joustCooldown:1,angle:0,vx:0,vy:0});Object.assign(lanceRival,{x:lance.x+300,y:lance.y});
+runBehaviorHook(lance,'tick',{sim:{ticks:10,hitStop:0} as never,rival:lanceRival,event:{dt:1/60,force:0,damage:0},showImpact:()=>{}});
+assert.ok((lance.joustFrames??0)>0,'Lance should enter a timed joust when its charge comes ready');
+assert.ok(Math.hypot(lance.vx,lance.vy)>=1200,'a joust should commit Lance to a visibly fast charge');
+const joustDefense={damage:30,force:10};runBehaviorHook(lance,'modifyIncoming',{rival:lanceRival,event:joustDefense});
+assert.equal(joustDefense.damage,0,'Lance should be invulnerable during its committed joust');
+const grower=makeBall('grower','left'),startingRadius=grower.radius;
+runBehaviorHook(grower,'wallHit',{rival:lance,event:{damage:0,force:0}});
+assert.ok(grower.radius>startingRadius,'Grower should change its real collision radius on a rebound');
+const polar=makeBall('polar','left'),polarTarget=makeBall('mint','right');Object.assign(polar,{polarity:1,x:100,y:100});Object.assign(polarTarget,{x:200,y:100,vx:0,vy:0});
+runBehaviorHook(polar,'dealHit',{rival:polarTarget,event:{damage:5,force:5},showImpact:()=>{}});
+assert.equal(polar.polarity,-1,'Polar should reverse polarity after a direct hit');
+assert.ok(polarTarget.vx>=760,'repulsion should guarantee a legible minimum launch speed');
+for(const id of ['lance','grower','flail','polar'])assert.ok(fighter(id),`${id} should be addressable by the seeded roster`);
 const duration=(source:keyof typeof soundSources):number=>audioDurationSeconds(new URL(`../public${soundSources[source].localUrl}`,import.meta.url));
 const cueDuration=(cue:keyof typeof soundCues):number=>{
   const definition=soundCues[cue];

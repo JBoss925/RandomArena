@@ -12,6 +12,7 @@ const paths:Record<string,string>={
   zap:'<path d="m14 2-9 12h6l-1 8 9-13h-6z"/>',damage:'<path d="M4 20 20 4M7 4l13 13M4 7l13 13"/>',anchor:'<path d="M12 5v16M7 8h10M4 14c0 5 4 8 8 8s8-3 8-8M4 14l-2 3M20 14l2 3"/>',
   orbit:'<circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="5" transform="rotate(-25 12 12)"/>',sword:'<path d="m18 3 3 3L10 17l-3-3zM5 12l7 7M4 17l3 3"/>',ruler:'<path d="m5 19 14-14 3 3L8 22zM12 10l2 2M16 6l2 2"/>',
   rotate:'<path d="M20 8a9 9 0 1 0 1 7M20 3v5h-5"/>',bat:'<path d="M17 3c4 2 4 5 2 8L9 21c-2 2-5 1-6-1s0-4 2-6L15 4z"/>',launch:'<path d="M3 12h15M13 6l6 6-6 6"/>',
+  magnet:'<path d="M5 3v10a7 7 0 0 0 14 0V3h-5v10a2 2 0 0 1-4 0V3zM5 8h5M14 8h5"/>',
 };
 
 export function specIcon(name:string):string{return `<svg viewBox="0 0 24 24" aria-hidden="true">${paths[name]??paths.impact}</svg>`;}

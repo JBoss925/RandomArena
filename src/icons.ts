@@ -21,6 +21,10 @@ export const fighterIcons:Record<string,string> = {
   slugger: wrap('<path fill="#fff" d="M45 7c7 3 9 8 6 15L28 51c-3 4-8 5-12 2s-4-8-1-12L38 12c2-3 4-5 7-5Z"/><path d="m17 39 12 10"/>'),
   shotgun: wrap('<path fill="#fff" d="M8 27h40l8 7-8 7H8z"/><path d="M18 41 13 55h13l7-14M45 27l8-7M49 41l7 5"/>'),
   sniper: wrap('<path fill="#fff" d="M6 29h49v8H6z"/><path d="M18 37 13 54h12l8-17M47 29V18M40 18h14"/><circle fill="#fff" cx="35" cy="24" r="8"/>'),
+  lance: wrap('<path fill="#fff" d="M7 29h36v-8l15 11-15 11v-8H7z"/><path d="M15 22v20M8 16h14"/>'),
+  grower: wrap('<circle fill="#fff" cx="32" cy="32" r="10"/><path d="M32 3v15M32 46v15M3 32h15M46 32h15M11 11l11 11M42 42l11 11M53 11 42 22M22 42 11 53"/>'),
+  flail: wrap('<path d="M9 13c12-8 22 5 19 16"/><path stroke-dasharray="3 7" d="M28 29c-2 8 2 13 8 15"/><circle fill="#fff" cx="43" cy="47" r="10"/><path d="m43 31 2 7m12 2-7 4m-4 13-2-6m-13-1 6-3"/>'),
+  polar: wrap('<path fill="#fff" d="M10 7v27a22 22 0 0 0 44 0V7H40v27a8 8 0 0 1-16 0V7z"/><path d="M10 19h14M40 19h14"/>'),
 };
 
 const cache = new Map<string,HTMLImageElement>();

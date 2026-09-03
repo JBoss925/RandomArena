@@ -470,6 +470,7 @@ function drawBall(b:Ball):void {
   drawBallStateTexture(b);
   ctx.restore();
   drawWeapon(ctx,b);
+  runBehaviorHook(b,'drawFront',{sim:state.sim??undefined,ctx});
   drawFighterIcon(ctx,b.f.id,b.x,b.y,b.radius*.82);
   if(b.burn>0){ctx.save();ctx.fillStyle='#ff6b1a';for(let i=0;i<5;i++){const a=((state.sim?.ticks??0)*.08+i*1.25),r=b.radius+10+(i%2)*7;ctx.beginPath();ctx.arc(b.x+Math.cos(a)*r,b.y+Math.sin(a)*r,4+i%2*2,0,Math.PI*2);ctx.fill();}ctx.restore();}
   runBehaviorHook(b,'draw',{sim:state.sim??undefined,ctx});

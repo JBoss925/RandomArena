@@ -2,7 +2,7 @@ export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
 export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
-export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -10,7 +10,7 @@ export type Bounds = { left: number; right: number; top: number; bottom: number 
 export type FighterSpec = { icon: string; label: string; value: string };
 
 type WeaponBase = {
-  type: 'sword' | 'bat' | 'shotgun' | 'sniper';
+  type: 'sword' | 'bat' | 'lance' | 'shotgun' | 'sniper';
   length: number;
   width: number;
   angularSpeed: number;
@@ -18,7 +18,7 @@ type WeaponBase = {
 };
 
 export type MeleeWeapon = WeaponBase & {
-  type: 'sword' | 'bat';
+  type: 'sword' | 'bat' | 'lance';
   projectile?: false;
   damage: number;
   cooldown: number;
@@ -103,6 +103,17 @@ export type Ball = Point & {
   phaseFrames?: number;
   frostFrozenUntil?: number;
   orbitCooldown?: number;
+  joustCooldown?: number;
+  joustFrames?: number;
+  joustDamage?: number;
+  growthBaseRadius?: number;
+  flailAngle?: number;
+  flailSpeed?: number;
+  flailDamage?: number;
+  flailRadius?: number;
+  flailReach?: number;
+  flailCooldown?: number;
+  polarity?: 1|-1;
 };
 
 export type CombatEvent = {
@@ -236,5 +247,5 @@ export type BehaviorContext = {
   ctx: CanvasRenderingContext2D;
 };
 
-export type BehaviorHook = 'wallHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawBack';
+export type BehaviorHook = 'wallHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawBack'|'drawFront';
 export type Behavior = Partial<Record<BehaviorHook,(context:BehaviorContext)=>void>>;

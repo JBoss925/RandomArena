@@ -1,12 +1,20 @@
 // Fighter kits are small, composable hook scripts. The engine owns universal
 // movement and damage; a roster entry opts into any combination of these kits.
 const pulse=(ball:Ball,name:string,frames:number):void=>{ball.visualStates[name]=Math.max(ball.visualStates[name]??0,frames);};
+const growBall=(ball:Ball,amount:number):boolean=>{
+  ball.growthBaseRadius??=ball.radius;
+  const next=Math.min(ball.growthBaseRadius*1.55,ball.radius+amount);
+  if(next===ball.radius)return false;
+  ball.radius=next;
+  ball.mass=ball.f.mass*(1+(ball.radius/ball.growthBaseRadius-1)*.55);
+  return true;
+};
 
 export const behaviors:Record<string,Behavior>={
   wallCharge:{
     wallHit({ball,emitParticles,playSound}){ball.voltCharge=Math.min(5,(ball.voltCharge??0)+1);const previous=ball.wallBoost;ball.wallBoost=Math.min(1.42,ball.wallBoost*1.025);const gain=ball.wallBoost/previous;ball.vx*=gain;ball.vy*=gain;pulse(ball,'electric',12);emitParticles(ball,{count:4,color:'#e5ff00',speed:160,gravity:0,kind:'bolt',size:7});playSound('electric',{volume:.45,rate:1.2});},
     modifyOutgoing({ball,event}){const charge=ball.voltCharge??0;if(charge){event.damage+=charge*1.3;event.voltRelease=charge;}},
-    dealHit({ball,rival,event,showImpact,emitParticles,playSound}){if(!event.voltRelease)return;rival.stunned+=event.voltRelease*3;ball.voltCharge=0;pulse(rival,'electric',18);showImpact('DISCHARGE!',rival);emitParticles(rival,{count:8+event.voltRelease*2,color:'#e5ff00',speed:350,gravity:0,kind:'bolt',size:9});playSound('electric',{volume:.8,rate:.82});},
+    dealHit({ball,rival,event,showImpact,emitParticles,playSound}){if(!event.voltRelease)return;if(event.bubblePop){showImpact('GROUNDED!',ball);return;}rival.stunned+=event.voltRelease*3;ball.voltCharge=0;pulse(rival,'electric',18);showImpact('DISCHARGE!',rival);emitParticles(rival,{count:8+event.voltRelease*2,color:'#e5ff00',speed:350,gravity:0,kind:'bolt',size:9});playSound('electric',{volume:.8,rate:.82});},
     draw({ball,ctx}){const charge=ball.voltCharge??0;if(!charge)return;ctx.save();ctx.strokeStyle='#e5ff00';ctx.lineWidth=3;for(let i=0;i<charge;i++){const a=i*Math.PI*2/charge+ball.angle,r=ball.radius+10;ctx.beginPath();ctx.moveTo(ball.x+Math.cos(a)*r,ball.y+Math.sin(a)*r);ctx.lineTo(ball.x+Math.cos(a+.17)*(r+10),ball.y+Math.sin(a+.17)*(r+10));ctx.stroke();}ctx.restore();},
   },
   armor:{
@@ -92,6 +100,86 @@ export const behaviors:Record<string,Behavior>={
   },
   bladeTempo:{dealHit({ball,rival,event,showImpact,emitParticles,playSound}){if(!event.weapon||event.projectile)return;ball.angularVelocity=-Math.sign(ball.angularVelocity||1)*Math.min(4.5,Math.abs(ball.angularVelocity)*1.09);pulse(ball,'blade',12);showImpact('RIPOSTE!',ball);emitParticles(rival,{count:15,color:'#fff',speed:420,gravity:260,kind:'slash',size:9});playSound('sword');}},
   slugger:{dealHit({rival,event,showImpact,emitParticles,playSound}){if(!event.weapon)return;rival.wallCrash={frames:90,damage:12};pulse(rival,'launched',20);showImpact('DEEP!',rival);emitParticles(rival,{count:14,color:'#f1c590',speed:360,gravity:250,kind:'star',size:8});playSound('bat');}},
+  joust:{
+    tick({ball,rival,sim,showImpact,emitParticles,playSound}){
+      ball.joustDamage??=12;ball.joustCooldown??=ball.side==='left'?70:86;
+      if((ball.joustFrames??0)>0){ball.joustFrames!--;pulse(ball,'joust',2);return;}
+      ball.joustCooldown!--;
+      if(ball.joustCooldown>0)return;
+      ball.joustFrames=34;ball.joustCooldown=150;
+      const distance=Math.hypot(rival.x-ball.x,rival.y-ball.y),leadTime=Math.min(.3,distance/1220*.72);
+      const targetAngle=Math.atan2(rival.y+rival.vy*leadTime-ball.y,rival.x+rival.vx*leadTime-ball.x);
+      const direction=targetAngle+Math.sin(sim.ticks*.173+(ball.side==='left'?0:2.1))*.24,speed=1220;
+      ball.angle=direction;
+      ball.vx=Math.cos(direction)*speed;ball.vy=Math.sin(direction)*speed;
+      pulse(ball,'joustStart',18);showImpact('CHARGE!',ball);
+      emitParticles(ball,{count:18,color:'#feed9a',speed:300,gravity:0,kind:'speed',size:8});
+      playSound('lanceCharge');sim.hitStop=Math.max(sim.hitStop,2);
+    },
+    modifyIncoming({ball,rival,event}){if((ball.joustFrames??0)>0&&!event.ability){event.damage=0;event.unblockable=true;return;}if(!event.weapon&&Math.hypot(rival.vx,rival.vy)>900)event.damage*=.55;},
+    modifyOutgoing({ball,event}){if((ball.joustFrames??0)>0&&event.weapon){event.damage+=ball.joustDamage??12;event.unblockable=true;}},
+    dealHit({ball,rival,event,showImpact,emitParticles,playSound}){
+      if(event.damage<=0)return;
+      ball.joustDamage=Math.min(27,(ball.joustDamage??12)+1.5);
+      if((ball.joustFrames??0)<=0||!event.weapon)return;
+      ball.joustFrames=0;pulse(rival,'joustHit',24);showImpact('TILT!',rival);
+      emitParticles(rival,{count:24,color:'#fff1ad',speed:480,gravity:320,kind:'star',size:10});playSound('lanceHit');
+    },
+    wallHit({ball}){if((ball.joustFrames??0)>0)ball.joustFrames=0;},
+    draw({ball,ctx,sim}){
+      if((ball.joustFrames??0)<=0)return;
+      const wave=4+Math.sin(sim.ticks*.7)*3;
+      ctx.save();ctx.strokeStyle='#fff1ad';ctx.lineWidth=5;ctx.globalAlpha=.75;
+      ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+12+wave,Math.PI*.6,Math.PI*1.4);ctx.stroke();ctx.restore();
+    },
+  },
+  growth:{
+    wallHit({ball,showImpact,emitParticles,playSound}){if(!growBall(ball,1.35))return;pulse(ball,'growth',14);emitParticles(ball,{count:5,color:'#b8ff82',speed:90,gravity:-30,kind:'bubble',size:6});playSound('grow',{volume:.42,rate:1.25});if(Math.round(ball.radius)%10===0)showImpact('BIGGER!',ball);},
+    dealHit({ball,event,showImpact,emitParticles,playSound}){if(event.weapon||event.projectile||event.damage<=0||!growBall(ball,2.6))return;pulse(ball,'growth',22);showImpact('GROW!',ball);emitParticles(ball,{count:12,color:'#b8ff82',speed:150,gravity:-50,kind:'bubble',size:8});playSound('grow');},
+    draw({ball,ctx}){if(!ball.growthBaseRadius||ball.radius<=ball.growthBaseRadius+1)return;ctx.save();ctx.strokeStyle='#b8ff82';ctx.lineWidth=4;ctx.setLineDash([7,6]);ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+8,0,Math.PI*2);ctx.stroke();ctx.restore();},
+  },
+  wildFlail:{
+    tick({ball,rival,sim,event,random,showImpact,emitParticles,playSound}){
+      ball.flailAngle??=ball.angle;ball.flailSpeed??=(random()<.5?-1:1)*(7.2+random()*2.8);ball.flailDamage??=7;ball.flailRadius??=15;
+      ball.flailCooldown=Math.max(0,(ball.flailCooldown??0)-1);
+      if(ball.frozen||ball.stunned)return;
+      const dt=event.dt??1/60;
+      ball.flailAngle+=(ball.flailSpeed+Math.sin(sim.ticks*.071+ball.side.length)*2.4)*dt;
+      const reach=ball.radius+70+Math.sin(sim.ticks*.047)*14;ball.flailReach=reach;
+      const fx=ball.x+Math.cos(ball.flailAngle)*reach,fy=ball.y+Math.sin(ball.flailAngle)*reach;
+      if(ball.flailCooldown||rival.hp<=0||Math.hypot(rival.x-fx,rival.y-fy)>rival.radius+(ball.flailRadius??15))return;
+      const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
+      ball.hits++;rival.incoming++;
+      const hit={damage:(ball.flailDamage??7)*ball.f.power*ball.powerScale,force:8,weapon:true,ability:true};
+      const context={sim,rival,event:hit,random,showImpact,emitParticles,audioTone:()=>{},audioHit:()=>{},playSound};
+      runBehaviorHook(ball,'modifyOutgoing',context);runBehaviorHook(rival,'modifyIncoming',{...context,rival:ball});rival.hp-=hit.damage;
+      const dx=rival.x-fx,dy=rival.y-fy,d=Math.hypot(dx,dy)||1;rival.vx+=dx/d*190;rival.vy+=dy/d*190;rival.flash=7;
+      ball.flailCooldown=22;ball.flailDamage=Math.min(22,(ball.flailDamage??7)+.8);ball.flailRadius=Math.min(30,(ball.flailRadius??15)+.7);
+      runBehaviorHook(ball,'dealHit',context);runBehaviorHook(rival,'takeHit',{...context,rival:ball});
+      pulse(ball,'flailHit',18);showImpact('CRUNCH!',{x:fx,y:fy});emitParticles({x:fx,y:fy},{count:16,color:'#dedede',speed:340,gravity:290,kind:'metal',size:8});playSound('flail');
+      const [left,right]=sim.balls;sim.lastExchange={tick:sim.ticks,source:'flail strike',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
+    },
+    drawFront({ball,ctx}){
+      const angle=ball.flailAngle??ball.angle,reach=ball.flailReach??ball.radius+70,fx=ball.x+Math.cos(angle)*reach,fy=ball.y+Math.sin(angle)*reach,r=ball.flailRadius??15;
+      ctx.save();ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.setLineDash([8,5]);ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(fx,fy);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#d8d5cb';ctx.beginPath();ctx.arc(fx,fy,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(fx+Math.cos(a)*r*.7,fy+Math.sin(a)*r*.7);ctx.lineTo(fx+Math.cos(a)*(r+7),fy+Math.sin(a)*(r+7));ctx.stroke();}ctx.restore();
+    },
+  },
+  polarityDrive:{
+    modifyIncoming({event}){if(event.projectile)event.damage*=1.4;else if(event.ability)event.damage*=1.1;},
+    beforeMove({ball,rival,event}){ball.polarity??=1;const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,dt=event.dt??0,acceleration=ball.polarity*255;ball.vx+=dx/d*acceleration*dt;ball.vy+=dy/d*acceleration*dt;},
+    dealHit({ball,rival,event,showImpact,emitParticles,playSound}){
+      if(event.projectile||event.damage<=0)return;
+      ball.polarity=ball.polarity===-1?1:-1;
+      const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1;
+      if(ball.polarity===-1){const speed=Math.max(760,Math.hypot(rival.vx,rival.vy));rival.vx=dx/d*speed;rival.vy=dy/d*speed;showImpact('REPEL!',rival);playSound('magnetPush');}
+      else{showImpact('ATTRACT!',ball);playSound('magnetPull');}
+      pulse(ball,ball.polarity===1?'magnetPull':'magnetPush',24);emitParticles({x:(ball.x+rival.x)/2,y:(ball.y+rival.y)/2},{count:18,color:ball.polarity===1?'#67e8ff':'#ff6b8a',speed:260,gravity:0,kind:'bolt',size:8});
+    },
+    drawBack({ball,ctx,sim}){const rival=sim.balls.find(candidate=>candidate!==ball);if(!rival)return;const polarity=ball.polarity??1,dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,gap=Math.max(0,d-ball.radius-rival.radius);ctx.save();ctx.strokeStyle=polarity===1?'#67e8ff':'#ff6b8a';ctx.lineWidth=3;ctx.globalAlpha=.3+.12*Math.sin(sim.ticks*.2);ctx.setLineDash(polarity===1?[7,8]:[3,11]);ctx.beginPath();ctx.moveTo(ball.x+ux*ball.radius,ball.y+uy*ball.radius);ctx.lineTo(ball.x+ux*(ball.radius+gap),ball.y+uy*(ball.radius+gap));ctx.stroke();ctx.restore();},
+    draw({ball,ctx,sim}){const pull=(ball.polarity??1)===1;ctx.save();ctx.strokeStyle=pull?'#67e8ff':'#ff6b8a';ctx.lineWidth=4;ctx.globalAlpha=.75;for(let i=0;i<2;i++){ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+9+i*8+Math.sin(sim.ticks*.16+i)*3,0,Math.PI*2);ctx.stroke();}ctx.restore();},
+  },
   randomSteering:{beforeMove({ball,random}){ball.vx+=(random()-.5)*20;ball.vy+=(random()-.5)*20;}},
   combatPull:{beforeMove({ball,rival,event}){const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,dt=event.dt??0;ball.vx+=dx/d*90*dt;ball.vy+=dy/d*90*dt;}},
   speedLimit:{beforeMove({ball}){const max=255*ball.f.speed*ball.wallBoost,speed=Math.hypot(ball.vx,ball.vy);if(speed>max){ball.vx*=max/speed;ball.vy*=max/speed;}}},
