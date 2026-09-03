@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {stepProjectiles} from '../src/projectiles.js';
 import {applyWeaponMotion,collectWeaponHit,collectWeaponWorldContact} from '../src/weapons.js';
 import {runBehaviorHook} from '../src/behaviors.js';
+import {matchupKey,runMatchup} from './balance-core.js';
 import {fighters,getFighter} from '../src/fighters.js';
 import {simulateMatch} from '../src/headless-simulation.js';
 import {createInitialBall} from '../src/initial-conditions.js';
@@ -155,4 +156,10 @@ for(const cue of ['bodyContact','wallContact','materialPlastic','materialWall','
 for(const [cue,definition] of Object.entries(soundCues))if(definition.file){
   assert.ok(audioDurationSeconds(new URL(`../public${definition.file}`,import.meta.url))/definition.rate<=2,`${cue} should finish within two seconds at its intended rate`);
 }
+const balanceSample=runMatchup(fighter('rook'),fighter('volt'),2);
+assert.equal(matchupKey('volt','rook'),'rook--volt','matchup shards should use a stable unordered key');
+assert.equal(balanceSample.simulations,4,'a matchup should run the requested seed count from both sides');
+assert.equal(balanceSample.results.rook.games,4,'each fighter should receive every mirrored matchup result');
+assert.equal(balanceSample.results.rook.asLeft.games,2,'literal left-side results should be tracked independently');
+assert.equal(balanceSample.results.rook.asRight.games,2,'literal right-side results should be tracked independently');
 console.log('Projectile, weapon-contact, deterministic replay, and CC0 sound-library tests passed.');

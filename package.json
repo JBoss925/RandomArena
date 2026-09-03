@@ -9,8 +9,12 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/test-mechanics.ts",
     "preview": "vite preview",
-    "balance": "tsx scripts/generate-tier-matrix.ts",
-    "balance:check": "npm run balance && tsx scripts/check-balance.ts",
+    "balance": "tsx scripts/generate-tier-matrix.ts --all",
+    "balance:matchup": "tsx scripts/generate-tier-matrix.ts --matchup",
+    "balance:fighter": "tsx scripts/generate-tier-matrix.ts --fighter",
+    "balance:fighters": "tsx scripts/generate-tier-matrix.ts --fighters",
+    "balance:assemble": "tsx scripts/generate-tier-matrix.ts --assemble",
+    "balance:check": "tsx scripts/check-balance.ts",
     "balance:optimize": "tsx scripts/optimize-balance.ts"
   },
   "devDependencies": {

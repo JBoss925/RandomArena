@@ -126,6 +126,11 @@ export type CombatEvent = {
   echo?: boolean;
   ability?: boolean;
   unblockable?: boolean;
+  parryPenetration?: number;
+  armorPenetration?: number;
+  armorDamage?: number;
+  shieldPenetration?: number;
+  healingScale?: number;
   voltRelease?: number;
   bubblePop?: boolean;
   jackpot?: boolean;

@@ -23,11 +23,22 @@ Netlify SPA redirects are included in `public/_redirects` so all routes work whe
 
 ## Balance testing
 
-Run `npm run balance` to simulate every unique fighter pairing from both starting sides across 24 seeds per side. The deterministic headless runner uses the production roster, behavior hooks, rotating weapons, fixed timestep, and elastic collision solver without stage hazards.
+Run `npm run balance` to simulate every unique fighter pairing from both starting sides across 500 seeds per side. The deterministic headless runner uses the production roster, behavior hooks, rotating weapons, fixed timestep, and elastic collision solver without stage hazards.
 
-Results are written to `reports/tier-matrix.json` and `reports/tier-matrix.md`. Override the sample count with `RUNS=100 npm run balance` when a larger study is needed.
+Each pairing is stored independently in `reports/matchups/`, then assembled into `reports/tier-matrix.json`, `reports/tier-matrix.md`, and the public Versus data. This lets unchanged matchup results survive targeted balancing work.
 
-`npm run balance:optimize` searches fighter power coefficients with deterministic coordinate descent. For fine tuning around an established roster, use the same production sample set with `RUNS=24 SWEEPS=1 LOCAL_STEP=0.001 npm run balance:optimize`, apply the suggested values in `src/fighters.ts`, then run `npm run balance` to publish the verified matrix to the Versus viewer.
+Use the focused commands while tuning:
+
+```bash
+npm run balance:matchup -- rook volt
+npm run balance:fighter -- rook
+npm run balance:fighters -- rook volt bubble mothership
+npm run balance:assemble
+```
+
+`balance:matchup` replaces one 1,000-fight shard. `balance:fighter` reruns one fighter against the roster. `balance:fighters` reruns every unique pairing involving any listed fighter without duplicating overlaps. Each command rebuilds the aggregate automatically; `balance:assemble` only rebuilds it from existing shards. Set `RUNS` only when intentionally creating a complete alternate sample set, because the assembler rejects mixed shard sizes.
+
+`npm run balance:optimize` searches fighter power coefficients with deterministic coordinate descent. It is an exploratory tool; apply any suggested values in `src/fighters.ts`, then verify changed fighters through the 500-seed targeted commands before publishing the matrix to the Versus viewer.
 
 Run `npm run balance:check` before shipping roster changes. It fails if any fighter falls outside 40–60% overall or any individual matchup falls outside the 20–80% counterplay envelope.
 

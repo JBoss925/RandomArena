@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-03T21:34:20.981Z",
+  "seedsPerSide": 500,
+  "simulations": 1000,
+  "fighters": [
+    "bubble",
+    "saber"
+  ],
+  "results": {
+    "bubble": {
+      "wins": 675,
+      "losses": 325,
+      "draws": 0,
+      "games": 1000,
+      "score": 0.675,
+      "winRate": 0.675,
+      "drawRate": 0,
+      "averageSeconds": 14.180100000000001,
+      "averageRemainingHp": 17.54570061620995,
+      "averageOpponentHp": 4.315694456763634,
+      "asLeft": {
+        "wins": 333,
+        "losses": 167,
+        "draws": 0,
+        "games": 500,
+        "score": 0.666,
+        "winRate": 0.666,
+        "drawRate": 0,
+        "averageSeconds": 14.151166666666667,
+        "averageRemainingHp": 17.51671989351808,
+        "averageOpponentHp": 3.911260090430447
+      },
+      "asRight": {
+        "wins": 342,
+        "losses": 158,
+        "draws": 0,
+        "games": 500,
+        "score": 0.684,
+        "winRate": 0.684,
+        "drawRate": 0,
+        "averageSeconds": 14.209033333333334,
+        "averageRemainingHp": 17.574681338901787,
+        "averageOpponentHp": 4.720128823096817
+      }
+    },
+    "saber": {
+      "wins": 325,
+      "losses": 675,
+      "draws": 0,
+      "games": 1000,
+      "score": 0.325,
+      "winRate": 0.325,
+      "drawRate": 0,
+      "averageSeconds": 14.180100000000001,
+      "averageRemainingHp": 4.315694456763634,
+      "averageOpponentHp": 17.54570061620995,
+      "asLeft": {
+        "wins": 158,
+        "losses": 342,
+        "draws": 0,
+        "games": 500,
+        "score": 0.316,
+        "winRate": 0.316,
+        "drawRate": 0,
+        "averageSeconds": 14.209033333333334,
+        "averageRemainingHp": 4.720128823096817,
+        "averageOpponentHp": 17.574681338901787
+      },
+      "asRight": {
+        "wins": 167,
+        "losses": 333,
+        "draws": 0,
+        "games": 500,
+        "score": 0.334,
+        "winRate": 0.334,
+        "drawRate": 0,
+        "averageSeconds": 14.151166666666667,
+        "averageRemainingHp": 3.911260090430447,
+        "averageOpponentHp": 17.51671989351808
+      }
+    }
+  }
+}
