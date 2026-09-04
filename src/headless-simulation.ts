@@ -3,7 +3,7 @@ import { resolveElasticCollision, wallCollisionSide } from './physics.js';
 import { applyWeaponMotion, collectWeaponHit, collectWeaponWorldContact } from './weapons.js';
 import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { createInitialBall } from './initial-conditions.js';
-import { contactForce } from './combat-config.js';
+import { contactForce, impactSpeedScale } from './combat-config.js';
 import { resolveOutcome } from './outcome.js';
 import {explodeGrenade,stepMines} from './explosives.js';
 import type { Ball, CombatEvent, Fighter, MineHit, Outcome, ProjectileHit, Simulation, WeaponHit, Winner } from './types';
@@ -19,7 +19,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
   for(let tick=0;tick<maxTicks;tick++){
     if(sim.hitStop>0){sim.hitStop--;continue;}
     sim.ticks++;
-    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0){const event={damage:echo.damage,force:echo.damage,echo:true};echo.victim.hp-=event.damage;runBehaviorHook(echo.victim,'takeHit',{...ctx(sim,echo.attacker,event),rival:echo.attacker});}}
+    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0){const event={damage:echo.damage,force:echo.damage,echo:true,ability:true};const context={...ctx(sim,echo.attacker,event),rival:echo.attacker};runBehaviorHook(echo.victim,'modifyIncoming',context);echo.victim.hp-=event.damage;runBehaviorHook(echo.victim,'takeHit',context);}}
     sim.echoes=sim.echoes.filter(e=>e.frames>0);
     for(const ball of sim.balls){
       ball.cooldown=Math.max(0,ball.cooldown-1);ball.weaponCooldown=Math.max(0,ball.weaponCooldown-1);ball.weaponWorldCooldown=Math.max(0,ball.weaponWorldCooldown-1);ball.fireCooldown=Math.max(0,ball.fireCooldown-1);ball.stunned=Math.max(0,ball.stunned-1);ball.flash=Math.max(0,ball.flash-1);
@@ -54,7 +54,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
 function resolveBodyHit(sim:Simulation):void{
   const [a,b]=sim.balls,speedA=Math.hypot(a.vx,a.vy),speedB=Math.hypot(b.vx,b.vy),collision=resolveElasticCollision(a,b);if(!collision||a.cooldown||b.cooldown)return;
   const force=contactForce(collision.relativeNormalSpeed);a.cooldown=b.cooldown=9;a.stunned=b.stunned=Math.round(3+force*.45);sim.hitStop=Math.round(2+force*.32);
-  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1),attackerSpeed:speedA,targetSpeed:speedB},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1),attackerSpeed:speedB,targetSpeed:speedA}],sim,'body collision');
+  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)*impactSpeedScale(speedA,speedB),attackerSpeed:speedA,targetSpeed:speedB},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)*impactSpeedScale(speedB,speedA),attackerSpeed:speedB,targetSpeed:speedA}],sim,'body collision');
 }
 
 function resolveWeaponHits(hits:WeaponHit[],sim:Simulation):void{

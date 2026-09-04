@@ -6,7 +6,7 @@ import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { drawFighterIcon } from './icons.js';
 import { fighters, getFighter } from './fighters.js';
 import { createInitialBall } from './initial-conditions.js';
-import { contactForce } from './combat-config.js';
+import { contactForce, impactSpeedScale } from './combat-config.js';
 import { explodeGrenade, stepMines } from './explosives.js';
 import { specIcon } from './spec-icons.js';
 import { resolveOutcome } from './outcome.js';
@@ -207,7 +207,7 @@ function update(dt:number):void {
   if(!state.running||s.finished){if(s.finished)stepParticles(s,dt);return;}
   if (s.hitStop > 0) { s.hitStop--; return; }
   s.ticks++;
-  for (const e of s.echoes) { e.frames--; if(e.frames===0){const event={damage:e.damage,force:e.damage,echo:true};e.victim.hp-=event.damage;runBehaviorHook(e.victim,'takeHit',{sim:s,rival:e.attacker,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound});e.victim.flash=6;e.victim.visualStates.echo=16;impact('ECHO!',e.victim);emitParticles(e.victim,{count:8,color:'#9ce3df',speed:170,gravity:0,kind:'ring',size:7});playSound('echo');} }
+  for (const e of s.echoes) { e.frames--; if(e.frames===0){const event={damage:e.damage,force:e.damage,echo:true,ability:true};const context={sim:s,rival:e.attacker,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};runBehaviorHook(e.victim,'modifyIncoming',context);e.victim.hp-=event.damage;runBehaviorHook(e.victim,'takeHit',context);e.victim.flash=6;e.victim.visualStates.echo=16;impact('ECHO!',e.victim);emitParticles(e.victim,{count:8,color:'#9ce3df',speed:170,gravity:0,kind:'ring',size:7});playSound('echo');} }
   s.echoes=s.echoes.filter(e=>e.frames>0);
   stepParticles(s,dt);
   for (const b of s.balls) {
@@ -352,8 +352,8 @@ function collideBalls(s:Simulation):void {
     const before={left:a.hp,right:b.hp};
     const force=contactForce(rel);
     a.hits++; b.incoming++; b.hits++; a.incoming++;
-    const eventA={force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1),attackerSpeed:speedA,targetSpeed:speedB};
-    const eventB={force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1),attackerSpeed:speedB,targetSpeed:speedA};
+    const eventA={force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)*impactSpeedScale(speedA,speedB),attackerSpeed:speedA,targetSpeed:speedB};
+    const eventB={force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)*impactSpeedScale(speedB,speedA),attackerSpeed:speedB,targetSpeed:speedA};
     const contextA={sim:s,rival:b,event:eventA,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     const contextB={sim:s,rival:a,event:eventB,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     s.hitStop=Math.round(2+force*.32);

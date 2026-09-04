@@ -1,5 +1,6 @@
 import {castGeometryGrapple,grappleHeadContact} from './grapple.js';
 import {deployMine,throwGrenade} from './explosives.js';
+import {impactSpeedScale} from './combat-config.js';
 import type { Ball, Behavior, BehaviorContext, BehaviorHook, Point } from './types';
 
 // Fighter kits are small, composable hook scripts. The engine owns universal
@@ -23,7 +24,7 @@ export const behaviors:Record<string,Behavior>={
   },
   armor:{
     tick({ball,emitParticles,playSound}){ball.armorPlates??=3;if(ball.armorPlates===0&&(ball.armorRepair??0)>0){ball.armorRepair=(ball.armorRepair??0)-1;if(ball.armorRepair===0){ball.armorPlates=3;pulse(ball,'steel',18);emitParticles(ball,{count:10,color:'#d7dde2',speed:190,gravity:240,kind:'metal',size:7});playSound('armorBlock',{volume:.55,rate:1.2});}}},
-    modifyIncoming({ball,event}){ball.armorPlates??=3;if(ball.armorPlates>0)event.damage*=event.armorPenetration??.74;},
+    modifyIncoming({ball,event}){ball.armorPlates??=3;if(ball.armorPlates>0){event.damage*=event.armorPenetration??(event.projectile?.68:.74);if(event.echo)event.damage*=.85;if(event.staticBurst)event.damage*=.65;}},
     takeHit({ball,event,showImpact,emitParticles,playSound}){if(event.damage<=0||(ball.armorPlates??0)<=0)return;pulse(ball,'steel',12);ball.armorPlates=Math.max(0,(ball.armorPlates??0)-(event.armorDamage??1));emitParticles(ball,{count:6,color:'#d7dde2',speed:180,gravity:260,kind:'metal',size:6});playSound('armorBlock');if(ball.armorPlates===0){ball.armorRepair=180;pulse(ball,'armorBreak',28);showImpact('ARMOR BREAK!',ball);emitParticles(ball,{count:18,color:'#f3efdf',speed:390,gravity:420,kind:'metal',size:9});playSound('armorBreak');}},
     draw({ball,ctx}){const plates=ball.armorPlates??3;ctx.save();ctx.strokeStyle='#fff';ctx.lineWidth=5;for(let i=0;i<plates;i++){const a=-Math.PI*.82+i*Math.PI*.32;ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius-7,a,a+.25);ctx.stroke();}ctx.restore();},
   },
@@ -49,7 +50,7 @@ export const behaviors:Record<string,Behavior>={
   },
   thorns:{
     modifyIncoming({event}){event.healingScale=.75;},
-    takeHit({ball,rival,event,showImpact,emitParticles,playSound}){if(event.damage<=0)return;rival.hp-=event.damage*.3;ball.sporeMeter=(ball.sporeMeter??0)+event.damage;emitParticles(ball,{count:3,color:'#c2dd9e',speed:110,gravity:130,kind:'leaf',size:6});if(ball.sporeMeter>=18){ball.sporeMeter=0;rival.stunned+=30;pulse(rival,'brambled',38);showImpact('BRAMBLE ROOT!',rival);emitParticles(rival,{count:20,color:'#658c3a',speed:220,gravity:180,kind:'leaf',size:8});playSound('root');}},
+    takeHit({ball,rival,event,showImpact,emitParticles,playSound}){if(event.damage<=0)return;const attackerMass=rival.mass??rival.f.mass,returnRatio=event.echo?.24:attackerMass>1.3?.285:.3;rival.hp-=event.damage*returnRatio;if(event.echo)return;ball.sporeMeter=(ball.sporeMeter??0)+event.damage;emitParticles(ball,{count:3,color:'#c2dd9e',speed:110,gravity:130,kind:'leaf',size:6});if(ball.sporeMeter>=18){ball.sporeMeter=0;rival.stunned+=30;pulse(rival,'brambled',38);showImpact('BRAMBLE ROOT!',rival);emitParticles(rival,{count:20,color:'#658c3a',speed:220,gravity:180,kind:'leaf',size:8});playSound('root');}},
     draw({ball,ctx}){const p=Math.min(1,(ball.sporeMeter??0)/18);ctx.save();ctx.strokeStyle='#c2dd9e';ctx.lineWidth=3;for(let i=0;i<8;i++){const a=i*Math.PI/4,x=ball.x+Math.cos(a)*(ball.radius+5),y=ball.y+Math.sin(a)*(ball.radius+5);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(ball.x+Math.cos(a)*(ball.radius+8+9*p),ball.y+Math.sin(a)*(ball.radius+8+9*p));ctx.stroke();}ctx.restore();},
   },
   blink:{
@@ -74,7 +75,7 @@ export const behaviors:Record<string,Behavior>={
   },
   continuousAcceleration:{
     beforeMove({ball}){ball.vx*=1.001;ball.vy*=1.001;},
-    modifyOutgoing({ball,event}){const speed=Math.hypot(ball.vx,ball.vy),velocityBonus=Math.max(0,Math.min(12,(speed-780)/65));event.damage+=velocityBonus;if(speed>=650){event.armorPenetration=.82;event.armorDamage=3;}},
+    modifyOutgoing({ball,event}){const speed=Math.hypot(ball.vx,ball.vy),velocityBonus=Math.max(0,Math.min(12,(speed-780)/65));if(!event.weapon&&!event.projectile&&event.attackerSpeed!==undefined&&event.targetSpeed!==undefined){const applied=impactSpeedScale(event.attackerSpeed,event.targetSpeed),softened=1+(applied-1)*.5;event.damage*=softened/applied;}event.damage+=velocityBonus;if(speed>=650){event.armorPenetration=.82;event.armorDamage=3;}},
     dealHit({ball,emitParticles,playSound}){ball.vx*=.86;ball.vy*=.86;pulse(ball,'cometImpact',16);emitParticles(ball,{count:10,color:'#ffc2d4',speed:300,gravity:0,kind:'star',size:7});playSound('whoosh');},
     drawBack({ball,ctx}){
       const speed=Math.hypot(ball.vx,ball.vy)||1,nx=ball.vx/speed,ny=ball.vy/speed;
@@ -96,7 +97,8 @@ export const behaviors:Record<string,Behavior>={
   },
   woundedPower:{
     tick({ball}){ball.mass=ball.f.mass*(1+(100-Math.max(0,ball.hp))/125);if(ball.hp<50)pulse(ball,'heavy',2);},
-    modifyOutgoing({ball,event}){event.damage*=1+(100-ball.hp)/90;},
+    modifyOutgoing({ball,event}){event.damage*=1+(100-ball.hp)/90;if(ball.hp<50){event.armorPenetration=.85;event.armorDamage=2;}if(!event.weapon&&!event.projectile&&event.attackerSpeed!==undefined&&event.targetSpeed!==undefined){const applied=impactSpeedScale(event.attackerSpeed,event.targetSpeed),softened=1+(applied-1)*.2;event.damage*=softened/applied;}},
+    modifyIncoming({rival,event}){if(!event.weapon&&!event.projectile&&event.attackerSpeed!==undefined&&event.targetSpeed!==undefined){const applied=impactSpeedScale(event.attackerSpeed,event.targetSpeed),softened=1+(applied-1)*.2;event.damage*=softened/applied;}if(rival.f.behaviors.includes('continuousAcceleration'))event.damage*=1.05;},
     draw({ball,ctx}){const p=Math.max(0,(100-ball.hp)/100);if(!p)return;ctx.save();ctx.strokeStyle='#b9c8d2';ctx.lineWidth=3+p*5;ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+9,0,Math.PI*2);ctx.stroke();ctx.restore();},
   },
   orbitalSatellites:{
@@ -155,7 +157,7 @@ export const behaviors:Record<string,Behavior>={
       if(ball.flailCooldown||rival.hp<=0||Math.hypot(rival.x-fx,rival.y-fy)>rival.radius+(ball.flailRadius??15))return;
       const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
       ball.hits++;rival.incoming++;
-      const hit={damage:(ball.flailDamage??7)*ball.f.power*ball.powerScale,force:8,weapon:true,ability:true};
+      const hit={damage:(ball.flailDamage??7)*ball.f.power*ball.powerScale,force:8,weapon:true,ability:true,shieldPenetration:.5};
       const context={sim,rival,event:hit,random,showImpact,emitParticles,audioTone:()=>{},audioHit:()=>{},playSound};
       runBehaviorHook(ball,'modifyOutgoing',context);runBehaviorHook(rival,'modifyIncoming',{...context,rival:ball});rival.hp-=hit.damage;
       const dx=rival.x-fx,dy=rival.y-fy,d=Math.hypot(dx,dy)||1;rival.vx+=dx/d*190;rival.vy+=dy/d*190;rival.flash=7;
@@ -172,7 +174,7 @@ export const behaviors:Record<string,Behavior>={
     },
   },
   polarityDrive:{
-    modifyIncoming({event}){if(event.projectile)event.damage*=1.4;else if(event.ability)event.damage*=1.1;},
+    modifyIncoming({rival,event}){if(event.projectile)event.damage*=1.4;else if(event.ability)event.damage*=1.1;else if(rival.f.behaviors.includes('continuousAcceleration'))event.damage*=.9;},
     beforeMove({ball,rival,event}){ball.polarity??=1;const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,dt=event.dt??0,acceleration=ball.polarity*255;ball.vx+=dx/d*acceleration*dt;ball.vy+=dy/d*acceleration*dt;},
     dealHit({ball,rival,event,showImpact,emitParticles,playSound}){
       if(event.projectile||event.damage<=0)return;

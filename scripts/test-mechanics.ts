@@ -8,6 +8,7 @@ import {simulateMatch} from '../src/headless-simulation.js';
 import {createInitialBall} from '../src/initial-conditions.js';
 import {SOUND_OUTPUT_GAIN,soundCues,soundSources} from '../src/sounds.js';
 import {contactFeedback} from '../src/materials.js';
+import {impactSpeedScale} from '../src/combat-config.js';
 import {statSync} from 'node:fs';
 import {audioDurationSeconds} from './audio-duration.js';
 import {contrastForeground,contrastRatio} from '../src/color-contrast.js';
@@ -164,6 +165,9 @@ for(const current of fighters){
 }
 const fixedStats=createInitialBall(fighter('flail'),'left',()=>.99);
 assert.equal(fixedStats.powerScale,1,'seeds must not reroll fighter damage');
+assert.equal(impactSpeedScale(600,600),1,'equal-speed impacts should preserve base damage');
+assert.equal(impactSpeedScale(1200,0),1.15,'impact damage should respect its upper speed cap');
+assert.equal(impactSpeedScale(0,1200),.85,'impact damage should respect its lower speed cap');
 runBehaviorHook(fixedStats,'tick',{sim:{ticks:0,balls:[fixedStats]} as never,rival:makeBall('brick','right'),event:{dt:0,force:0,damage:0},random:()=>.01});
 assert.equal(fixedStats.flailSpeed,8.6,'Flail base spin must not reroll with the seed');
 assert.equal(fighter('saber').weapon?.material,'metal');
