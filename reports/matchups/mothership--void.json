@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-09-03T21:33:41.540Z",
+  "generatedAt": "2026-09-04T03:35:13.716Z",
   "seedsPerSide": 500,
   "simulations": 1000,
   "fighters": [
@@ -9,27 +9,27 @@
   ],
   "results": {
     "void": {
-      "wins": 418,
-      "losses": 582,
+      "wins": 422,
+      "losses": 578,
       "draws": 0,
       "games": 1000,
-      "score": 0.418,
-      "winRate": 0.418,
+      "score": 0.422,
+      "winRate": 0.422,
       "drawRate": 0,
-      "averageSeconds": 19.8027,
-      "averageRemainingHp": 4.122030052561438,
-      "averageOpponentHp": 10.499780893344855,
+      "averageSeconds": 19.96493333333333,
+      "averageRemainingHp": 3.6007377574191763,
+      "averageOpponentHp": 9.760189507767736,
       "asLeft": {
-        "wins": 199,
-        "losses": 301,
+        "wins": 203,
+        "losses": 297,
         "draws": 0,
         "games": 500,
-        "score": 0.398,
-        "winRate": 0.398,
+        "score": 0.406,
+        "winRate": 0.406,
         "drawRate": 0,
-        "averageSeconds": 19.848833333333335,
-        "averageRemainingHp": 4.20173744462861,
-        "averageOpponentHp": 10.31109467008089
+        "averageSeconds": 20.021133333333335,
+        "averageRemainingHp": 3.02898014219382,
+        "averageOpponentHp": 9.941480182300495
       },
       "asRight": {
         "wins": 219,
@@ -39,22 +39,22 @@
         "score": 0.438,
         "winRate": 0.438,
         "drawRate": 0,
-        "averageSeconds": 19.756566666666668,
-        "averageRemainingHp": 4.042322660494261,
-        "averageOpponentHp": 10.688467116608795
+        "averageSeconds": 19.90873333333333,
+        "averageRemainingHp": 4.172495372644534,
+        "averageOpponentHp": 9.578898833235
       }
     },
     "mothership": {
-      "wins": 582,
-      "losses": 418,
+      "wins": 578,
+      "losses": 422,
       "draws": 0,
       "games": 1000,
-      "score": 0.582,
-      "winRate": 0.582,
+      "score": 0.578,
+      "winRate": 0.578,
       "drawRate": 0,
-      "averageSeconds": 19.8027,
-      "averageRemainingHp": 10.499780893344855,
-      "averageOpponentHp": 4.122030052561438,
+      "averageSeconds": 19.96493333333333,
+      "averageRemainingHp": 9.760189507767736,
+      "averageOpponentHp": 3.6007377574191763,
       "asLeft": {
         "wins": 281,
         "losses": 219,
@@ -63,21 +63,21 @@
         "score": 0.562,
         "winRate": 0.562,
         "drawRate": 0,
-        "averageSeconds": 19.756566666666668,
-        "averageRemainingHp": 10.688467116608795,
-        "averageOpponentHp": 4.042322660494261
+        "averageSeconds": 19.90873333333333,
+        "averageRemainingHp": 9.578898833235,
+        "averageOpponentHp": 4.172495372644534
       },
       "asRight": {
-        "wins": 301,
-        "losses": 199,
+        "wins": 297,
+        "losses": 203,
         "draws": 0,
         "games": 500,
-        "score": 0.602,
-        "winRate": 0.602,
+        "score": 0.594,
+        "winRate": 0.594,
         "drawRate": 0,
-        "averageSeconds": 19.848833333333335,
-        "averageRemainingHp": 10.31109467008089,
-        "averageOpponentHp": 4.20173744462861
+        "averageSeconds": 20.021133333333335,
+        "averageRemainingHp": 9.941480182300495,
+        "averageOpponentHp": 3.02898014219382
       }
     }
   }

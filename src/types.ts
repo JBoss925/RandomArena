@@ -165,7 +165,7 @@ export type CombatEvent = {
   attackerSpeed?: number;
   targetSpeed?: number;
   swingStrike?: boolean;
-  webSlam?: boolean;
+  webPull?: boolean;
   geometry?: {x:number;y:number;nx:number;ny:number;type:'wall'|'hazard'};
   explosive?: boolean;
 };

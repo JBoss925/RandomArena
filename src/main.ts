@@ -377,7 +377,7 @@ function collideBalls(s:Simulation):void {
 
 function setDossier(side:Side,f:Fighter):void{
   const specs=f.specs.map(item=>`<div class="dossier-spec">${specIcon(item.icon)}<span><small>${item.label}</small><b>${item.value}</b></span></div>`).join('');
-  $(side+'-dossier').innerHTML=`<strong>${f.ability}</strong><p>${f.desc}</p><div class="dossier-specs">${specs}</div><small class="core-stats">SPD ${Math.round(f.speed*100)} · PWR ${Math.round(f.power*100)} · MASS ${Math.round(f.mass*100)} · FORM ±10%</small>`;
+  $(side+'-dossier').innerHTML=`<strong>${f.ability}</strong><p>${f.desc}</p><div class="dossier-specs">${specs}</div><small class="core-stats">SPD ${Math.round(f.speed*100)} · PWR ${Math.round(f.power*100)} · MASS ${Math.round(f.mass*100)}</small>`;
   $(side+'-info').setAttribute('aria-label',`${f.name}: ${f.ability}. ${f.desc}`);
 }
 

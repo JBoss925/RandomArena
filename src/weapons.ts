@@ -35,7 +35,7 @@ export function collectWeaponHit(ball:Ball, rival:Ball, _dt:number):WeaponHit|nu
       minimumSpeed:weapon.minimumLaunchSpeed??0,
       speedMultiplier:weapon.speedMultiplier??1,
     }:null,
-    label: weapon.type === 'bat' ? 'KNOCK!' : weapon.type === 'lance' ? ((ball.joustFrames??0)>0?'JOUST!':'PRICK!') : 'SLASH!',
+    label: weapon.type === 'bat' ? 'BAT HIT!' : weapon.type === 'lance' ? ((ball.joustFrames??0)>0?'JOUST!':'PRICK!') : 'BLADE HIT!',
   };
 }
 
@@ -88,16 +88,17 @@ export function drawWeapon(ctx:CanvasRenderingContext2D, ball:Ball):void {
   ctx.translate(ball.x, ball.y);
   ctx.rotate(ball.angle);
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   if (weapon.type === 'sword') {
     const gripStart = ball.radius * 0.35;
     const bladeStart = ball.radius * 0.78;
     const tip = ball.radius + weapon.length;
     ctx.strokeStyle = '#5b3421'; ctx.lineWidth = 12;
     ctx.beginPath(); ctx.moveTo(gripStart, 0); ctx.lineTo(bladeStart + 8, 0); ctx.stroke();
-    ctx.strokeStyle = '#151515'; ctx.lineWidth = weapon.width + 6;
-    ctx.beginPath(); ctx.moveTo(bladeStart, 0); ctx.lineTo(tip, 0); ctx.stroke();
-    ctx.strokeStyle = '#f4f5ef'; ctx.lineWidth = weapon.width;
-    ctx.beginPath(); ctx.moveTo(bladeStart, 0); ctx.lineTo(tip, 0); ctx.stroke();
+    const pointStart=tip-20;
+    ctx.fillStyle='#f4f5ef';ctx.strokeStyle='#151515';ctx.lineWidth=5;
+    ctx.beginPath();ctx.moveTo(bladeStart,-weapon.width/2);ctx.lineTo(pointStart,-weapon.width/2);ctx.lineTo(tip,0);ctx.lineTo(pointStart,weapon.width/2);ctx.lineTo(bladeStart,weapon.width/2);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bladeStart+7,-weapon.width*.22);ctx.lineTo(pointStart-3,-weapon.width*.22);ctx.stroke();
     ctx.fillStyle = '#151515'; ctx.fillRect(bladeStart - 7, -15, 8, 30);
   } else if(weapon.type === 'lance') {
     const gripStart=ball.radius*.3,shaftEnd=ball.radius+weapon.length-22,tip=ball.radius+weapon.length;
@@ -115,12 +116,15 @@ export function drawWeapon(ctx:CanvasRenderingContext2D, ball:Ball):void {
   } else {
     const start = ball.radius * 0.45;
     const end = ball.radius + weapon.length;
-    ctx.strokeStyle = '#151515'; ctx.lineWidth = weapon.width + 6;
-    ctx.beginPath(); ctx.moveTo(start, 0); ctx.lineTo(end, 0); ctx.stroke();
-    ctx.strokeStyle = '#d89a54'; ctx.lineWidth = weapon.width;
-    ctx.beginPath(); ctx.moveTo(start, 0); ctx.lineTo(end, 0); ctx.stroke();
-    ctx.strokeStyle = '#f1c590'; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.moveTo(start + 8, -4); ctx.lineTo(end - 10, -4); ctx.stroke();
+    const length=end-start,barrelRadius=weapon.width*.55,capX=end-barrelRadius;
+    ctx.fillStyle='#d89a54';ctx.strokeStyle='#151515';ctx.lineWidth=5;
+    ctx.beginPath();ctx.moveTo(start,-5);
+    ctx.bezierCurveTo(start+length*.3,-5.5,start+length*.58,-barrelRadius,capX,-barrelRadius);
+    ctx.arc(capX,0,barrelRadius,-Math.PI/2,Math.PI/2);
+    ctx.bezierCurveTo(start+length*.58,barrelRadius,start+length*.3,5.5,start,5);
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle='#f1c590';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(start+length*.42,-4);ctx.bezierCurveTo(start+length*.62,-7,end-20,-8,end-8,-5);ctx.stroke();
+    ctx.fillStyle='#d89a54';ctx.strokeStyle='#151515';ctx.lineWidth=5;ctx.beginPath();ctx.arc(start-3,0,7,0,Math.PI*2);ctx.fill();ctx.stroke();
   }
   ctx.restore();
 }

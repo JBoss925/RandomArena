@@ -49,7 +49,7 @@ export const behaviors:Record<string,Behavior>={
   },
   thorns:{
     modifyIncoming({event}){event.healingScale=.75;},
-    takeHit({ball,rival,event,showImpact,emitParticles,playSound}){if(event.damage<=0)return;rival.hp-=event.damage*.3;ball.sporeMeter=(ball.sporeMeter??0)+event.damage;emitParticles(ball,{count:3,color:'#c2dd9e',speed:110,gravity:130,kind:'leaf',size:6});if(ball.sporeMeter>=18){ball.sporeMeter=0;rival.stunned+=30;pulse(rival,'brambled',38);showImpact('ROOTED!',rival);emitParticles(rival,{count:20,color:'#658c3a',speed:220,gravity:180,kind:'leaf',size:8});playSound('root');}},
+    takeHit({ball,rival,event,showImpact,emitParticles,playSound}){if(event.damage<=0)return;rival.hp-=event.damage*.3;ball.sporeMeter=(ball.sporeMeter??0)+event.damage;emitParticles(ball,{count:3,color:'#c2dd9e',speed:110,gravity:130,kind:'leaf',size:6});if(ball.sporeMeter>=18){ball.sporeMeter=0;rival.stunned+=30;pulse(rival,'brambled',38);showImpact('BRAMBLE ROOT!',rival);emitParticles(rival,{count:20,color:'#658c3a',speed:220,gravity:180,kind:'leaf',size:8});playSound('root');}},
     draw({ball,ctx}){const p=Math.min(1,(ball.sporeMeter??0)/18);ctx.save();ctx.strokeStyle='#c2dd9e';ctx.lineWidth=3;for(let i=0;i<8;i++){const a=i*Math.PI/4,x=ball.x+Math.cos(a)*(ball.radius+5),y=ball.y+Math.sin(a)*(ball.radius+5);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(ball.x+Math.cos(a)*(ball.radius+8+9*p),ball.y+Math.sin(a)*(ball.radius+8+9*p));ctx.stroke();}ctx.restore();},
   },
   blink:{
@@ -104,7 +104,7 @@ export const behaviors:Record<string,Behavior>={
     drawBack({ball,ctx,sim}){const r=ball.radius+31;ctx.save();ctx.strokeStyle='#151515';ctx.lineWidth=2;ctx.globalAlpha=.45;ctx.beginPath();ctx.arc(ball.x,ball.y,r,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;for(let i=0;i<2;i++){const a=sim.ticks*.065+i*Math.PI,sx=ball.x+Math.cos(a)*r,sy=ball.y+Math.sin(a)*r;ctx.fillStyle=i?'#c9bdff':'#e6ff34';ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.restore();},
   },
   bladeTempo:{dealHit({ball,rival,event,showImpact,emitParticles,playSound}){if(!event.weapon||event.projectile)return;ball.angularVelocity=-Math.sign(ball.angularVelocity||1)*Math.min(4.5,Math.abs(ball.angularVelocity)*1.09);pulse(ball,'blade',12);showImpact('RIPOSTE!',ball);emitParticles(rival,{count:15,color:'#fff',speed:420,gravity:260,kind:'slash',size:9});playSound('sword');}},
-  slugger:{dealHit({rival,event,showImpact,emitParticles,playSound}){if(!event.weapon)return;rival.wallCrash={frames:90,damage:12};pulse(rival,'launched',20);showImpact('DEEP!',rival);emitParticles(rival,{count:14,color:'#f1c590',speed:360,gravity:250,kind:'star',size:8});playSound('bat');}},
+  slugger:{dealHit({rival,event,showImpact,emitParticles,playSound}){if(!event.weapon)return;rival.wallCrash={frames:90,damage:12};pulse(rival,'launched',20);showImpact('WALL SLAM ARMED!',rival);emitParticles(rival,{count:14,color:'#f1c590',speed:360,gravity:250,kind:'star',size:8});playSound('bat');}},
   joust:{
     tick({ball,rival,sim,showImpact,emitParticles,playSound}){
       ball.joustDamage??=12;ball.joustCooldown??=ball.side==='left'?70:86;
@@ -145,7 +145,7 @@ export const behaviors:Record<string,Behavior>={
   },
   wildFlail:{
     tick({ball,rival,sim,event,random,showImpact,emitParticles,playSound}){
-      ball.flailAngle??=ball.angle;ball.flailSpeed??=(random()<.5?-1:1)*(7.2+random()*2.8);ball.flailDamage??=7;ball.flailRadius??=15;
+      ball.flailAngle??=ball.angle;ball.flailSpeed??=(ball.side==='left'?1:-1)*8.6;ball.flailDamage??=7;ball.flailRadius??=15;
       ball.flailCooldown=Math.max(0,(ball.flailCooldown??0)-1);
       if(ball.frozen||ball.stunned)return;
       const dt=event.dt??1/60;
@@ -269,12 +269,12 @@ export const behaviors:Record<string,Behavior>={
       if(ball.grappleMode==='swinging'){
         event.damage+=18+Math.min(18,Math.max(0,((event.attackerSpeed??0)-760)/40));event.swingStrike=true;event.ability=true;
       }else if(ball.grappleMode==='pulling'){
-        event.damage+=Math.min(20,Math.max(0,((event.targetSpeed??0)-420)/40));event.webSlam=true;event.ability=true;
+        event.damage+=Math.min(20,Math.max(0,((event.targetSpeed??0)-420)/40));event.webPull=true;event.ability=true;
       }
     },
     dealHit({ball,rival,event,random,showImpact,emitParticles,playSound}){
       if(event.swingStrike){ball.grappleMode=undefined;ball.grappleCooldown=60+Math.floor(random()*45);ball.grappleX=undefined;ball.grappleY=undefined;ball.grappleLength=undefined;showImpact('SWING STRIKE!',rival);emitParticles(rival,{count:18,color:ball.f.color,speed:380,gravity:130,kind:'web',size:9});playSound('webImpact',{rate:.9});}
-      if(event.webSlam){ball.grappleMode=undefined;ball.grappleCooldown=60+Math.floor(random()*45);delete rival.visualStates.webbed;showImpact('WEB SLAM!',rival);emitParticles(rival,{count:22,color:ball.f.color,speed:420,gravity:160,kind:'web',size:10});playSound('webImpact');}
+      if(event.webPull){ball.grappleMode=undefined;ball.grappleCooldown=60+Math.floor(random()*45);delete rival.visualStates.webbed;showImpact('WEB PULL!',rival);emitParticles(rival,{count:22,color:ball.f.color,speed:420,gravity:160,kind:'web',size:10});playSound('webImpact');}
     },
     drawBack({ball,ctx,sim}){
       const rival=sim.balls.find(candidate=>candidate!==ball);

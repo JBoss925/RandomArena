@@ -95,7 +95,7 @@ assert.equal(spider.grappleMode,undefined,'Spider should leave its perch after t
 assert.ok(Math.hypot(spider.vx,spider.vy)>=900,'a wall leap should eject Spider at its minimum speed');
 const webDamage={force:6,damage:3,targetSpeed:1220};Object.assign(spider,{grappleMode:'pulling'});
 runBehaviorHook(spider,'modifyOutgoing',{event:webDamage});
-assert.ok(webDamage.damage>15,'a web slam should scale from the pulled opponent speed');
+assert.ok(webDamage.damage>15,'Web Pull should scale from the pulled opponent speed');
 const swingDamage={force:8,damage:4,attackerSpeed:1100};Object.assign(spider,{grappleMode:'swinging',grappleX:20,grappleY:20,grappleLength:100,vx:700,vy:250});
 runBehaviorHook(spider,'modifyOutgoing',{event:swingDamage});
 assert.ok(swingDamage.damage>=30,'a committed swing connection should deal one large speed-scaled hit');
@@ -160,7 +160,12 @@ for(const id of ['brick','mint','goldie','moss','frost','rook','anchor'])assert.
 for(const current of fighters){
   const foreground=contrastForeground(current.color),chosen=foreground==='light'?'#fff':'#151515',other=foreground==='light'?'#151515':'#fff';
   assert.ok(contrastRatio(current.color,chosen)>=contrastRatio(current.color,other),`${current.name} should receive its highest-contrast card foreground`);
+  for(const item of current.specs)assert.doesNotMatch(`${item.label} ${item.value}`,/px\/s|px\/s²|rad\/s|projectile width|force above/i,`${current.name} should explain engine-space behavior in plain language`);
 }
+const fixedStats=createInitialBall(fighter('flail'),'left',()=>.99);
+assert.equal(fixedStats.powerScale,1,'seeds must not reroll fighter damage');
+runBehaviorHook(fixedStats,'tick',{sim:{ticks:0,balls:[fixedStats]} as never,rival:makeBall('brick','right'),event:{dt:0,force:0,damage:0},random:()=>.01});
+assert.equal(fixedStats.flailSpeed,8.6,'Flail base spin must not reroll with the seed');
 assert.equal(fighter('saber').weapon?.material,'metal');
 assert.equal(fighter('slugger').weapon?.material,'wood');
 for(const source of Object.values(soundSources)){

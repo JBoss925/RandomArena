@@ -16,6 +16,8 @@ export function createInitialBall(fighter:Fighter,side:Side,random:RandomSource)
     radius:64*(fighter.radiusScale??fighter.mass),angle:side==='left'?0:Math.PI,
     angularVelocity:fighter.weapon?.angularSpeed??naturalSpin,
     hp:100,cooldown:0,hazardCooldowns:{},weaponCooldown:0,weaponWorldCooldown:0,fireCooldown:fighter.weapon?.projectile?Math.floor(random()*fighter.weapon.fireInterval):0,stunned:0,
-    frozen:false,flash:0,powerScale:.9+random()*.2,hits:0,incoming:0,burn:0,burnStacks:0,wallBoost:1,wallCrash:null,visualStates:{},
+    // Fighter power is a fixed roster stat. The seed varies the opening motion,
+    // facing, spin, and ability timing, but never silently rerolls damage.
+    frozen:false,flash:0,powerScale:1,hits:0,incoming:0,burn:0,burnStacks:0,wallBoost:1,wallCrash:null,visualStates:{},
   };
 }
