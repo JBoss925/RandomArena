@@ -1,5 +1,5 @@
 import { runBehaviorHook } from './behaviors.js';
-import { resolveElasticCollision } from './physics.js';
+import { resolveElasticCollision, wallCollisionSide } from './physics.js';
 import { applyWeaponMotion, collectWeaponHit, collectWeaponWorldContact } from './weapons.js';
 import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { createInitialBall } from './initial-conditions.js';
@@ -10,7 +10,7 @@ import type { Ball, CombatEvent, Fighter, Outcome, ProjectileHit, Simulation, We
 const W=720,H=720,DT=1/60,BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const noop=()=>{};
 export type MatchResult=Omit<Partial<Outcome>,'winner'>&{winner:Winner;hp:{left:number;right:number};ticks:number;events:Record<string,number>};
-type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean};
+type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean;attackerSpeed?:number;targetSpeed?:number};
 
 export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:string,{maxTicks=60*40}:{maxTicks?:number}={}):MatchResult{
   const rng=mulberry32(hashString(`balance:v1:${seed}`));
@@ -29,9 +29,12 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
       if(ball.frozen||ball.stunned)continue;
       runBehaviorHook(ball,'beforeMove',context);
       ball.angle=(ball.angle+ball.angularVelocity*DT)%(Math.PI*2);ball.x+=ball.vx*DT;ball.y+=ball.vy*DT;
-      let hitWall=false;
-      if(ball.x-ball.radius<BOUNDS.left||ball.x+ball.radius>BOUNDS.right){ball.x=Math.max(BOUNDS.left+ball.radius,Math.min(BOUNDS.right-ball.radius,ball.x));ball.vx*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
-      if(ball.y-ball.radius<BOUNDS.top||ball.y+ball.radius>BOUNDS.bottom){ball.y=Math.max(BOUNDS.top+ball.radius,Math.min(BOUNDS.bottom-ball.radius,ball.y));ball.vy*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
+      let hitWall=false,wallX=ball.x,wallY=ball.y,normalX=0,normalY=0;
+      const xWall=wallCollisionSide(ball.x,ball.radius,BOUNDS.left,BOUNDS.right,ball.vx);
+      if(xWall){const left=xWall===-1;ball.x=left?BOUNDS.left+ball.radius:BOUNDS.right-ball.radius;wallX=left?BOUNDS.left:BOUNDS.right;wallY=ball.y;normalX=left?1:-1;ball.vx*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
+      const yWall=wallCollisionSide(ball.y,ball.radius,BOUNDS.top,BOUNDS.bottom,ball.vy);
+      if(yWall){const top=yWall===-1;ball.y=top?BOUNDS.top+ball.radius:BOUNDS.bottom-ball.radius;wallX=normalX?wallX:ball.x;wallY=top?BOUNDS.top:BOUNDS.bottom;normalY=top?1:-1;ball.vy*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
+      if(hitWall)runBehaviorHook(ball,'geometryHit',{...context,event:{...context.event,geometry:{x:wallX,y:wallY,nx:normalX,ny:normalY,type:'wall'}}});
       if(hitWall&&ball.wallCrash&&ball.wallCrash.frames>0){ball.hp-=ball.wallCrash.damage;ball.wallCrash=null;sim.events['WALL SLAM!']=(sim.events['WALL SLAM!']??0)+1;}
       if(collectWeaponWorldContact(ball,BOUNDS))sim.events['CLANG!']=(sim.events['CLANG!']??0)+1;
       const shot=fireRangedWeapon(ball,sim);if(shot)sim.events[shot.label]=(sim.events[shot.label]??0)+1;
@@ -47,9 +50,9 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
 }
 
 function resolveBodyHit(sim:Simulation):void{
-  const [a,b]=sim.balls,collision=resolveElasticCollision(a,b);if(!collision||a.cooldown||b.cooldown)return;
+  const [a,b]=sim.balls,speedA=Math.hypot(a.vx,a.vy),speedB=Math.hypot(b.vx,b.vy),collision=resolveElasticCollision(a,b);if(!collision||a.cooldown||b.cooldown)return;
   const force=contactForce(collision.relativeNormalSpeed);a.cooldown=b.cooldown=9;a.stunned=b.stunned=Math.round(3+force*.45);sim.hitStop=Math.round(2+force*.32);
-  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)}],sim,'body collision');
+  resolveCombatEvents([{attacker:a,victim:b,force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1),attackerSpeed:speedA,targetSpeed:speedB},{attacker:b,victim:a,force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1),attackerSpeed:speedB,targetSpeed:speedA}],sim,'body collision');
 }
 
 function resolveWeaponHits(hits:WeaponHit[],sim:Simulation):void{
@@ -66,7 +69,7 @@ function resolveCombatEvents(events:CombatItem[],sim:Simulation,source:string):v
   const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
   const prepared=events.map(item=>{
     item.attacker.hits++;item.victim.incoming++;
-    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable)};
+    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable),attackerSpeed:item.attackerSpeed,targetSpeed:item.targetSpeed};
     const context=ctx(sim,item.victim,event);
     runBehaviorHook(item.attacker,'modifyOutgoing',context);
     runBehaviorHook(item.victim,'modifyIncoming',{...context,rival:item.attacker});

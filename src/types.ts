@@ -2,7 +2,7 @@ export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
 export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
-export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -48,11 +48,13 @@ export type Fighter = {
   id: string;
   name: string;
   color: string;
+  secondaryColor?: string;
   accent: string;
   material?: Material;
   speed: number;
   power: number;
   mass: number;
+  radiusScale?: number;
   behaviors: string[];
   ability: string;
   desc: string;
@@ -115,6 +117,24 @@ export type Ball = Point & {
   flailCooldown?: number;
   polarity?: 1|-1;
   carrierCooldown?: number;
+  grappleCooldown?: number;
+  grappleMode?: 'casting'|'swinging'|'pulling'|'perched';
+  grappleTarget?: 'fighter'|'geometry';
+  grappleX?: number;
+  grappleY?: number;
+  grappleLength?: number;
+  grappleFrames?: number;
+  grappleCastFrames?: number;
+  grappleCastDuration?: number;
+  grappleOriginX?: number;
+  grappleOriginY?: number;
+  grappleDirectionX?: number;
+  grappleDirectionY?: number;
+  grappleTravel?: number;
+  grappleRange?: number;
+  grappleDirection?: 1|-1;
+  perchNormalX?: number;
+  perchNormalY?: number;
 };
 
 export type CombatEvent = {
@@ -140,6 +160,11 @@ export type CombatEvent = {
   blockedDamage?: number;
   rookBlock?: boolean;
   staticBurst?: boolean;
+  attackerSpeed?: number;
+  targetSpeed?: number;
+  swingStrike?: boolean;
+  webSlam?: boolean;
+  geometry?: {x:number;y:number;nx:number;ny:number;type:'wall'|'hazard'};
 };
 
 export type Echo = { attacker: Ball; victim: Ball; frames: number; damage: number };
@@ -258,5 +283,5 @@ export type BehaviorContext = {
   ctx: CanvasRenderingContext2D;
 };
 
-export type BehaviorHook = 'wallHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawBack'|'drawFront';
+export type BehaviorHook = 'wallHit'|'geometryHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawBack'|'drawFront';
 export type Behavior = Partial<Record<BehaviorHook,(context:BehaviorContext)=>void>>;

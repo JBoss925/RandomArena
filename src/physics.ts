@@ -1,5 +1,13 @@
 // Deterministic, fixed-step 2D collision primitives.
 // Base motion has no acceleration, drag, friction, gravity, or steering.
+export function wallCollisionSide(position:number,radius:number,lower:number,upper:number,velocity:number): -1|0|1 {
+  const tolerance=1e-6;
+  const lowerPenetration=lower-(position-radius),upperPenetration=position+radius-upper;
+  if(lowerPenetration>tolerance||(lowerPenetration>=-tolerance&&velocity<0))return -1;
+  if(upperPenetration>tolerance||(upperPenetration>=-tolerance&&velocity>0))return 1;
+  return 0;
+}
+
 export function resolveElasticCollision(a: Ball, b: Ball): { relativeNormalSpeed: number } | null {
   const dx = b.x - a.x;
   const dy = b.y - a.y;

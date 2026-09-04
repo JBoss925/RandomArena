@@ -1,3 +1,6 @@
+import {castGeometryGrapple,grappleHeadContact} from './grapple.js';
+import type { Ball, Behavior, BehaviorContext, BehaviorHook, Point } from './types';
+
 // Fighter kits are small, composable hook scripts. The engine owns universal
 // movement and damage; a roster entry opts into any combination of these kits.
 const pulse=(ball:Ball,name:string,frames:number):void=>{ball.visualStates[name]=Math.max(ball.visualStates[name]??0,frames);};
@@ -203,6 +206,87 @@ export const behaviors:Record<string,Behavior>={
       ctx.restore();
     },
   },
+  webSlinger:{
+    tick({ball,rival,sim,event,random,showImpact,emitParticles,playSound}){
+      ball.grappleCooldown??=42+Math.floor(random()*54);
+      const dt=event.dt??1/60;
+      if(ball.grappleMode==='perched'){
+        ball.vx=0;ball.vy=0;ball.grappleFrames=Math.max(0,(ball.grappleFrames??0)-1);pulse(ball,'perched',2);
+        if(ball.grappleFrames)return;
+        const normalAngle=Math.atan2(ball.perchNormalY??0,ball.perchNormalX??1),launchAngle=normalAngle+(random()-.5)*1.45,launchSpeed=900+random()*180;
+        ball.vx=Math.cos(launchAngle)*launchSpeed;ball.vy=Math.sin(launchAngle)*launchSpeed;ball.grappleMode=undefined;ball.grappleCooldown=58+Math.floor(random()*55);
+        pulse(ball,'webLeap',20);showImpact('LEAP!',ball);emitParticles(ball,{count:14,color:'#f4f4f0',speed:260,gravity:80,kind:'web',size:8});playSound('webPerch',{rate:1.25});
+        return;
+      }
+      if(ball.frozen||ball.stunned)return;
+      if(ball.grappleMode==='casting'){
+        const origin={x:ball.grappleOriginX??ball.x,y:ball.grappleOriginY??ball.y},direction={x:ball.grappleDirectionX??1,y:ball.grappleDirectionY??0},previous=ball.grappleTravel??0,next=Math.min(ball.grappleRange??0,previous+900*dt);
+        const start={x:origin.x+direction.x*previous,y:origin.y+direction.y*previous},end={x:origin.x+direction.x*next,y:origin.y+direction.y*next},contact=grappleHeadContact(start,end,rival,rival.radius+9);
+        ball.grappleTravel=next;
+        if(contact){
+          ball.grappleMode='pulling';ball.grappleFrames=105;ball.vx=0;ball.vy=0;rival.vx=0;rival.vy=0;pulse(rival,'webbed',16);showImpact('WEBBED!',contact);emitParticles(contact,{count:12,color:'#f4f4f0',speed:175,gravity:30,kind:'web',size:8});playSound('webImpact',{volume:.45,rate:1.25});
+        }else if(next>=(ball.grappleRange??0)&&ball.grappleX!==undefined&&ball.grappleY!==undefined){
+          ball.grappleMode='swinging';ball.grappleFrames=96;const dx=ball.x-ball.grappleX,dy=ball.y-ball.grappleY;ball.grappleLength=Math.max(ball.radius+12,Math.hypot(dx,dy));
+          const tangentDot=ball.vx*-dy+ball.vy*dx;ball.grappleDirection=(tangentDot===0?(random()<.5?-1:1):Math.sign(tangentDot)) as 1|-1;
+          showImpact('THWIP!',{x:ball.grappleX,y:ball.grappleY});emitParticles({x:ball.grappleX,y:ball.grappleY},{count:9,color:'#f4f4f0',speed:120,gravity:20,kind:'web',size:7});
+        }
+        return;
+      }
+      if(ball.grappleMode==='pulling'){
+        ball.grappleFrames=Math.max(0,(ball.grappleFrames??0)-1);
+        const dx=ball.x-rival.x,dy=ball.y-rival.y,d=Math.hypot(dx,dy)||1,acceleration=9000;
+        rival.vx+=dx/d*acceleration*dt;rival.vy+=dy/d*acceleration*dt;
+        const speed=Math.hypot(rival.vx,rival.vy),maximum=1420;if(speed>maximum){rival.vx*=maximum/speed;rival.vy*=maximum/speed;}
+        pulse(rival,'webbed',3);
+        if(!ball.grappleFrames){ball.grappleMode=undefined;ball.grappleCooldown=55+Math.floor(random()*50);playSound('webSwing',{volume:.45,rate:1.45});}
+        return;
+      }
+      if(ball.grappleMode==='swinging'){
+        ball.grappleFrames=Math.max(0,(ball.grappleFrames??0)-1);pulse(ball,'swinging',2);
+        if(!ball.grappleFrames){ball.grappleMode=undefined;ball.grappleCooldown=55+Math.floor(random()*55);playSound('webSwing',{volume:.5,rate:1.3});}
+        return;
+      }
+      ball.grappleCooldown=Math.max(0,ball.grappleCooldown-1);if(ball.grappleCooldown)return;
+      const angle=random()*Math.PI*2,bounds={left:28,right:sim.width-28,top:80,bottom:sim.height-28},hit=castGeometryGrapple(ball,bounds,sim.hazards,angle);
+      ball.grappleMode='casting';ball.grappleTarget='geometry';ball.grappleX=hit.x;ball.grappleY=hit.y;ball.grappleOriginX=ball.x;ball.grappleOriginY=ball.y;ball.grappleDirectionX=Math.cos(angle);ball.grappleDirectionY=Math.sin(angle);ball.grappleTravel=0;ball.grappleRange=hit.distance;
+      emitParticles(ball,{count:6,color:'#f4f4f0',speed:100,gravity:0,kind:'web',size:6});playSound('webShot');
+    },
+    beforeMove({ball,event}){
+      if(ball.grappleMode!=='swinging'||ball.grappleX===undefined||ball.grappleY===undefined)return;
+      const dx=ball.x-ball.grappleX,dy=ball.y-ball.grappleY,d=Math.hypot(dx,dy)||1,nx=dx/d,ny=dy/d,length=ball.grappleLength??d,direction=ball.grappleDirection??1;
+      ball.x=ball.grappleX+nx*length;ball.y=ball.grappleY+ny*length;
+      const tx=-ny*direction,ty=nx*direction,current=Math.abs(ball.vx*tx+ball.vy*ty),speed=Math.min(1480,Math.max(760,current)+620*(event.dt??1/60));
+      ball.vx=tx*speed;ball.vy=ty*speed;
+    },
+    geometryHit({ball,event,showImpact,emitParticles,playSound}){
+      if(ball.grappleMode!=='swinging'||!event.geometry)return;
+      ball.grappleMode='perched';ball.grappleFrames=60;ball.vx=0;ball.vy=0;ball.perchNormalX=event.geometry.nx;ball.perchNormalY=event.geometry.ny;
+      ball.grappleX=undefined;ball.grappleY=undefined;ball.grappleLength=undefined;pulse(ball,'perched',60);showImpact('PERCH!',event.geometry);emitParticles(event.geometry,{count:10,color:ball.f.color,speed:120,gravity:40,kind:'web',size:7});playSound('webPerch');
+    },
+    modifyOutgoing({ball,event}){
+      if(event.weapon||event.projectile)return;
+      if(ball.grappleMode==='swinging'){
+        event.damage+=18+Math.min(18,Math.max(0,((event.attackerSpeed??0)-760)/40));event.swingStrike=true;event.ability=true;
+      }else if(ball.grappleMode==='pulling'){
+        event.damage+=Math.min(20,Math.max(0,((event.targetSpeed??0)-420)/40));event.webSlam=true;event.ability=true;
+      }
+    },
+    dealHit({ball,rival,event,random,showImpact,emitParticles,playSound}){
+      if(event.swingStrike){ball.grappleMode=undefined;ball.grappleCooldown=60+Math.floor(random()*45);ball.grappleX=undefined;ball.grappleY=undefined;ball.grappleLength=undefined;showImpact('SWING STRIKE!',rival);emitParticles(rival,{count:18,color:ball.f.color,speed:380,gravity:130,kind:'web',size:9});playSound('webImpact',{rate:.9});}
+      if(event.webSlam){ball.grappleMode=undefined;ball.grappleCooldown=60+Math.floor(random()*45);delete rival.visualStates.webbed;showImpact('WEB SLAM!',rival);emitParticles(rival,{count:22,color:ball.f.color,speed:420,gravity:160,kind:'web',size:10});playSound('webImpact');}
+    },
+    drawBack({ball,ctx,sim}){
+      const rival=sim.balls.find(candidate=>candidate!==ball);
+      let target:Point|undefined;
+      if(ball.grappleMode==='casting'){
+        const originX=ball.grappleOriginX??ball.x,originY=ball.grappleOriginY??ball.y,directionX=ball.grappleDirectionX??1,directionY=ball.grappleDirectionY??0,travel=ball.grappleTravel??0;
+        target={x:originX+directionX*travel,y:originY+directionY*travel};
+      }else if(ball.grappleMode==='swinging'&&ball.grappleX!==undefined&&ball.grappleY!==undefined)target={x:ball.grappleX,y:ball.grappleY};
+      else if(ball.grappleMode==='pulling'&&rival)target=rival;
+      if(!target)return;
+      ctx.save();ctx.lineCap='round';ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(target.x,target.y);ctx.stroke();ctx.strokeStyle='#f4f4f0';ctx.lineWidth=3;ctx.setLineDash([4,5]);ctx.lineDashOffset=-sim.ticks*.45;ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#f4f4f0';ctx.strokeStyle='#151515';ctx.lineWidth=3;ctx.beginPath();ctx.arc(target.x,target.y,6,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+    },
+  },
   randomSteering:{beforeMove({ball,random}){ball.vx+=(random()-.5)*20;ball.vy+=(random()-.5)*20;}},
   combatPull:{beforeMove({ball,rival,event}){const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,dt=event.dt??0;ball.vx+=dx/d*90*dt;ball.vy+=dy/d*90*dt;}},
   speedLimit:{beforeMove({ball}){const max=255*ball.f.speed*ball.wallBoost,speed=Math.hypot(ball.vx,ball.vy);if(speed>max){ball.vx*=max/speed;ball.vy*=max/speed;}}},
@@ -213,4 +297,3 @@ export function runBehaviorHook(ball:Ball,hook:BehaviorHook,context:Partial<Omit
   const safeContext={random:Math.random,showImpact:noop,emitParticles:noop,audioTone:noop,audioHit:noop,playSound:noop,...context,ball} as BehaviorContext;
   for(const name of ball.f.behaviors??[])behaviors[name]?.[hook]?.(safeContext);
 }
-import type { Ball, Behavior, BehaviorContext, BehaviorHook } from './types';

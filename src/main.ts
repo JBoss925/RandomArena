@@ -1,6 +1,6 @@
 import './style.css';
 import { runBehaviorHook } from './behaviors.js';
-import { resolveElasticCollision } from './physics.js';
+import { resolveElasticCollision, wallCollisionSide } from './physics.js';
 import { applyWeaponMotion, collectWeaponHit, collectWeaponWorldContact, drawWeapon } from './weapons.js';
 import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { drawFighterIcon } from './icons.js';
@@ -222,9 +222,12 @@ function update(dt:number):void {
     runBehaviorHook(b,'beforeMove',behaviorContext);
     b.angle=(b.angle+b.angularVelocity*dt)%(Math.PI*2);
     b.x += b.vx*dt; b.y += b.vy*dt;
-    let hitWall=false,wallContact:Point|null=null;
-    if (b.x-b.radius < ARENA_BOUNDS.left || b.x+b.radius > ARENA_BOUNDS.right) { const left=b.x-b.radius<ARENA_BOUNDS.left;b.x = Math.max(ARENA_BOUNDS.left+b.radius,Math.min(ARENA_BOUNDS.right-b.radius,b.x));wallContact={x:left?ARENA_BOUNDS.left:ARENA_BOUNDS.right,y:b.y}; b.vx *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
-    if (b.y-b.radius < ARENA_BOUNDS.top || b.y+b.radius > ARENA_BOUNDS.bottom) { const top=b.y-b.radius<ARENA_BOUNDS.top;b.y = Math.max(ARENA_BOUNDS.top+b.radius,Math.min(ARENA_BOUNDS.bottom-b.radius,b.y));wallContact={x:wallContact?.x??b.x,y:top?ARENA_BOUNDS.top:ARENA_BOUNDS.bottom}; b.vy *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
+    let hitWall=false,wallContact:Point|null=null,wallNormal={x:0,y:0};
+    const xWall=wallCollisionSide(b.x,b.radius,ARENA_BOUNDS.left,ARENA_BOUNDS.right,b.vx);
+    if (xWall) { const left=xWall===-1;b.x=left?ARENA_BOUNDS.left+b.radius:ARENA_BOUNDS.right-b.radius;wallContact={x:left?ARENA_BOUNDS.left:ARENA_BOUNDS.right,y:b.y};wallNormal.x=left?1:-1; b.vx *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
+    const yWall=wallCollisionSide(b.y,b.radius,ARENA_BOUNDS.top,ARENA_BOUNDS.bottom,b.vy);
+    if (yWall) { const top=yWall===-1;b.y=top?ARENA_BOUNDS.top+b.radius:ARENA_BOUNDS.bottom-b.radius;wallContact={x:wallContact?.x??b.x,y:top?ARENA_BOUNDS.top:ARENA_BOUNDS.bottom};wallNormal.y=top?1:-1; b.vy *= -1;hitWall=true;runBehaviorHook(b,'wallHit',behaviorContext); }
+    if(hitWall&&wallContact)runBehaviorHook(b,'geometryHit',{...behaviorContext,event:{...behaviorContext.event,geometry:{...wallContact,nx:wallNormal.x,ny:wallNormal.y,type:'wall'}}});
     if(hitWall&&b.wallCrash&&b.wallCrash.frames>0){b.hp-=b.wallCrash.damage;b.flash=8;b.visualStates.wallSlam=20;b.wallCrash=null;impact('WALL SLAM!',wallContact??b);materialContact(wallContact??b,b.f.material,'plastic',14,{wall:true,balls:[b],volume:1.15});emitParticles(wallContact??b,{count:12,color:'#f1c590',speed:430,gravity:430,kind:'debris',size:9});}
     else if(hitWall)materialContact(wallContact??b,b.f.material,'plastic',Math.min(10,Math.hypot(b.vx,b.vy)/70),{wall:true,balls:[b],volume:.72,foundation:'wall'});
     collideHazard(b, s);
@@ -300,6 +303,8 @@ function collideHazard(b:Ball,s:Simulation):void {
     if (d<min && d>0) {
       const nx=dx/d,ny=dy/d; b.x=h.x+nx*min; b.y=h.y+ny*min; const dot=b.vx*nx+b.vy*ny;
       b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+      const rival=s.balls.find(other=>other!==b)!;
+      runBehaviorHook(b,'geometryHit',{sim:s,rival,event:{force:0,damage:0,geometry:{x:h.x+nx*h.r,y:h.y+ny*h.r,nx,ny,type:'hazard'}},random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound});
       const ready=!b.hazardCooldowns[h.id];
       if(h.type==='pinball') {
         // A bumper is an absolute radial launch, not a mild elastic rebound. It
@@ -321,6 +326,7 @@ function collideHazard(b:Ball,s:Simulation):void {
 
 function collideBalls(s:Simulation):void {
   const [a,b]=s.balls;
+  const speedA=Math.hypot(a.vx,a.vy),speedB=Math.hypot(b.vx,b.vy);
   const collision=resolveElasticCollision(a,b);
   if(!collision)return;
   const rel=collision.relativeNormalSpeed;
@@ -328,8 +334,8 @@ function collideBalls(s:Simulation):void {
     const before={left:a.hp,right:b.hp};
     const force=contactForce(rel);
     a.hits++; b.incoming++; b.hits++; a.incoming++;
-    const eventA={force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1)};
-    const eventB={force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1)};
+    const eventA={force,damage:force*a.f.power*a.powerScale*(a.f.bodyDamageScale??1),attackerSpeed:speedA,targetSpeed:speedB};
+    const eventB={force,damage:force*b.f.power*b.powerScale*(b.f.bodyDamageScale??1),attackerSpeed:speedB,targetSpeed:speedA};
     const contextA={sim:s,rival:b,event:eventA,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     const contextB={sim:s,rival:a,event:eventB,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     s.hitStop=Math.round(2+force*.32);
@@ -437,6 +443,7 @@ function drawEffectParticle(p:Particle):void{
   ctx.save();ctx.globalAlpha=Math.min(1,p.life/8);ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle=p.stroke??'#151515';ctx.lineWidth=1.5;
   const size=p.size??6;
   if(p.kind==='ice'||p.kind==='slash'||p.kind==='glass'){ctx.beginPath();ctx.moveTo(0,-size);ctx.lineTo(size*.55,size);ctx.lineTo(-size*.55,size*.45);ctx.closePath();ctx.fill();ctx.stroke();}
+  else if(p.kind==='web'){ctx.fillStyle='none';ctx.strokeStyle=p.color;ctx.lineWidth=1.5;for(let i=0;i<4;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(-Math.cos(a)*size,-Math.sin(a)*size);ctx.lineTo(Math.cos(a)*size,Math.sin(a)*size);ctx.stroke();}ctx.beginPath();ctx.arc(0,0,size*.55,0,Math.PI*2);ctx.stroke();}
   else if(p.kind==='bubble'||p.kind==='ring'){ctx.globalAlpha*=.75;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.strokeStyle=p.color;ctx.stroke();}
   else if(p.kind==='leaf'){ctx.scale(1,.55);ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.fill();ctx.stroke();}
   else if(p.kind==='coin'){ctx.scale(1,.45);ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.fill();ctx.stroke();}
@@ -476,7 +483,9 @@ function drawBall(b:Ball):void {
   runBehaviorHook(b,'drawBack',{sim:state.sim??undefined,ctx});
   ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(7,b.radius*.82,b.radius*.9,b.radius*.28,0,0,Math.PI*2);ctx.fill();ctx.restore();
   ctx.save();ctx.translate(b.x,b.y);if((b.visualStates.squash??0)>0){const wobble=Math.sin((b.visualStates.squash??0)*1.7)*.055;ctx.scale(1+wobble,1-wobble);}if(b.flash)ctx.globalAlpha=b.flash%2?.35:1;
-  ctx.fillStyle=b.f.color;ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,b.radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,b.radius,0,Math.PI*2);
+  if(b.f.secondaryColor){ctx.save();ctx.clip();ctx.fillStyle=b.f.color;ctx.fillRect(-b.radius,-b.radius,b.radius,b.radius*2);ctx.fillStyle=b.f.secondaryColor;ctx.fillRect(0,-b.radius,b.radius,b.radius*2);ctx.restore();ctx.stroke();}
+  else{ctx.fillStyle=b.f.color;ctx.fill();ctx.stroke();}
   ctx.fillStyle=b.f.accent;ctx.beginPath();ctx.arc(-b.radius*.28,-b.radius*.3,b.radius*.22,0,Math.PI*2);ctx.fill();
   drawBallStateTexture(b);
   ctx.restore();
@@ -489,24 +498,26 @@ function drawBall(b:Ball):void {
 }
 
 function drawBallStateTexture(b:Ball):void{
-  const ticks=state.sim?.ticks??0,frozen=(b.frostFrozenUntil??0)>ticks,brambled=(b.visualStates.brambled??0)>0;
+  const ticks=state.sim?.ticks??0,frozen=(b.frostFrozenUntil??0)>ticks,brambled=(b.visualStates.brambled??0)>0,webbed=(b.visualStates.webbed??0)>0;
   ctx.save();ctx.beginPath();ctx.arc(0,0,b.radius-3,0,Math.PI*2);ctx.clip();
   if((b.visualStates.steel??0)>0){ctx.fillStyle='rgba(176,188,198,.78)';ctx.fillRect(-b.radius,-b.radius,b.radius*2,b.radius*2);ctx.strokeStyle='#f5f8fa';ctx.lineWidth=3;for(let y=-b.radius;y<b.radius;y+=13){ctx.beginPath();ctx.moveTo(-b.radius,y);ctx.lineTo(b.radius,y-8);ctx.stroke();}}
   if(frozen){ctx.fillStyle='rgba(165,231,248,.52)';ctx.fillRect(-b.radius,-b.radius,b.radius*2,b.radius*2);ctx.strokeStyle='#ecfdff';ctx.lineWidth=4;for(let i=0;i<7;i++){const a=i*2.19+(b.side==='left'?.4:.9),inner=b.radius*.18,outer=b.radius*.88;ctx.beginPath();ctx.moveTo(Math.cos(a)*inner,Math.sin(a)*inner);ctx.lineTo(Math.cos(a)*outer,Math.sin(a)*outer);ctx.lineTo(Math.cos(a+.32)*outer*.68,Math.sin(a+.32)*outer*.68);ctx.stroke();}}
   if(brambled){ctx.strokeStyle='#344c22';ctx.lineWidth=6;for(let i=0;i<4;i++){const y=-b.radius*.7+i*b.radius*.47;ctx.beginPath();ctx.moveTo(-b.radius,y);ctx.bezierCurveTo(-b.radius*.45,y-18,b.radius*.2,y+22,b.radius,y-4);ctx.stroke();for(let x=-b.radius*.55;x<b.radius*.7;x+=b.radius*.5){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+8,y-12);ctx.stroke();}}}
+  if(webbed){ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=3;for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*b.radius,Math.sin(a)*b.radius);ctx.stroke();}for(let r=b.radius*.32;r<b.radius;r+=b.radius*.28){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.stroke();}}
   if((b.visualStates.electric??0)>0){ctx.strokeStyle='rgba(229,255,0,.9)';ctx.lineWidth=4;for(let i=0;i<5;i++){const y=-b.radius+i*b.radius*.48;ctx.beginPath();ctx.moveTo(-b.radius,y);ctx.lineTo(-b.radius*.25,y+10);ctx.lineTo(0,y-7);ctx.lineTo(b.radius*.35,y+8);ctx.lineTo(b.radius,y-3);ctx.stroke();}}
   if((b.visualStates.phase??0)>0){ctx.fillStyle='rgba(217,188,255,.34)';for(let i=0;i<8;i++)ctx.fillRect(-b.radius+(i%3)*b.radius*.7,-b.radius+i*b.radius*.27,b.radius*.55,7);}
   ctx.restore();
   if((b.visualStates.materialHit??0)>0){
     const colors:Record<Material,string>={plastic:'#f3efdf',metal:'#edf3f6',stone:'#aaa797',wood:'#d89a54',rubber:'#ffc4ef',glass:'#d8f7ff',energy:'#e5ff00',ceramic:'#fff3dc'};
     const material=b.f.material??'plastic',fade=(b.visualStates.materialHit??0)/7;
-    ctx.globalAlpha=.35+.5*fade;ctx.strokeStyle=colors[material];ctx.lineWidth=3+fade*3;ctx.beginPath();ctx.arc(0,0,b.radius+3+3*(1-fade),0,Math.PI*2);ctx.stroke();
+    ctx.globalAlpha=.35+.5*fade;ctx.strokeStyle=b.f.id==='spider'?'#fff':colors[material];ctx.lineWidth=3+fade*3;ctx.beginPath();ctx.arc(0,0,b.radius+3+3*(1-fade),0,Math.PI*2);ctx.stroke();
     if(material==='metal'||material==='glass'){ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-b.radius*.55,-b.radius*.7);ctx.lineTo(-b.radius*.12,-b.radius*.9);ctx.stroke();}
     else if(material==='stone'||material==='ceramic'){ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-5,-b.radius*.9);ctx.lineTo(4,-b.radius*.48);ctx.lineTo(-4,-b.radius*.2);ctx.stroke();}
     else if(material==='wood'){ctx.lineWidth=3;ctx.beginPath();ctx.arc(0,0,b.radius*.6,-.8,.9);ctx.stroke();}
   }
   if(frozen){ctx.strokeStyle='#d8f7ff';ctx.lineWidth=6;ctx.setLineDash([10,5]);ctx.beginPath();ctx.arc(0,0,b.radius+5,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
   if(brambled){ctx.strokeStyle='#658c3a';ctx.lineWidth=5;ctx.beginPath();ctx.arc(0,0,b.radius+5,0,Math.PI*2);ctx.stroke();}
+  if(webbed){ctx.strokeStyle='#f4f4f0';ctx.lineWidth=4;ctx.setLineDash([4,5]);ctx.beginPath();ctx.arc(0,0,b.radius+5,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
   if((b.visualStates.healing??0)>0){ctx.strokeStyle='#abf1dd';ctx.lineWidth=4;ctx.globalAlpha=.65+.3*Math.sin(ticks*.3);ctx.beginPath();ctx.arc(0,0,b.radius+8,0,Math.PI*2);ctx.stroke();}
 }
 
@@ -541,8 +552,9 @@ function emitParticles(origin:Point|Ball,{count=10,color='#fff',speed=300,gravit
 
 function materialContact(origin:Point|Ball,a:Material|undefined,b:Material|undefined,force:number,{wall=false,primary=false,balls=[],volume=1,foundation}:{wall?:boolean;primary?:boolean;balls?:Ball[];volume?:number;foundation?:'body'|'wall'}={}):ContactFeedback{
   const feedback=contactFeedback(a,b,force,{wall,primary});
-  emitParticles(origin,feedback.particles);
-  emitParticles(origin,{count:force>8?3:1,color:feedback.ringColor,speed:45+force*5,gravity:0,kind:'ring',size:5+force*.45});
+  const spider=balls.find(ball=>ball.f.id==='spider'),contactColor=spider?.f.color??feedback.particles.color;
+  emitParticles(origin,{...feedback.particles,color:contactColor});
+  emitParticles(origin,{count:force>8?3:1,color:spider?.f.color??feedback.ringColor,speed:45+force*5,gravity:0,kind:'ring',size:5+force*.45});
   for(const ball of balls){ball.visualStates.materialHit=7;if(feedback.material==='rubber')ball.visualStates.squash=9;}
   if(foundation)playSound(foundation==='body'?'bodyContact':'wallContact',{volume:.68+Math.min(.32,force/28),rate:Math.max(.82,Math.min(1.18,1.06-force*.01))});
   if(!(foundation==='wall'&&feedback.cue==='materialWall'))playSound(feedback.cue,{volume,rate:Math.max(.72,Math.min(1.25,1.12-force*.018))});
