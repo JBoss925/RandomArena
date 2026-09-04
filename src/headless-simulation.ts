@@ -6,12 +6,13 @@ import { createInitialBall } from './initial-conditions.js';
 import { contactForce, impactSpeedScale } from './combat-config.js';
 import { resolveOutcome } from './outcome.js';
 import {explodeGrenade,stepMines} from './explosives.js';
+import {applyDamage,poisonDamagePerTick} from './damage.js';
 import type { Ball, CombatEvent, Fighter, MineHit, Outcome, ProjectileHit, Simulation, WeaponHit, Winner } from './types';
 
 const W=720,H=720,DT=1/60,BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const noop=()=>{};
 export type MatchResult=Omit<Partial<Outcome>,'winner'>&{winner:Winner;hp:{left:number;right:number};ticks:number;events:Record<string,number>};
-type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean;explosive?:boolean;attackerSpeed?:number;targetSpeed?:number};
+type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean;explosive?:boolean;damageType?:CombatEvent['damageType'];attackerSpeed?:number;targetSpeed?:number};
 
 export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:string,{maxTicks=60*40}:{maxTicks?:number}={}):MatchResult{
   const rng=mulberry32(hashString(`balance:v1:${seed}`));
@@ -19,11 +20,12 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
   for(let tick=0;tick<maxTicks;tick++){
     if(sim.hitStop>0){sim.hitStop--;continue;}
     sim.ticks++;
-    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0){const event={damage:echo.damage,force:echo.damage,echo:true,ability:true};const context={...ctx(sim,echo.attacker,event),rival:echo.attacker};runBehaviorHook(echo.victim,'modifyIncoming',context);echo.victim.hp-=event.damage;runBehaviorHook(echo.victim,'takeHit',context);}}
+    for(const echo of sim.echoes){echo.frames--;if(echo.frames===0){const event:CombatEvent={damage:echo.damage,force:echo.damage,echo:true,ability:true,damageType:'echo'};const context={...ctx(sim,echo.attacker,event),rival:echo.attacker};runBehaviorHook(echo.victim,'modifyIncoming',context);applyDamage(echo.victim,event.damage,event.damageType);runBehaviorHook(echo.victim,'takeHit',context);}}
     sim.echoes=sim.echoes.filter(e=>e.frames>0);
     for(const ball of sim.balls){
       ball.cooldown=Math.max(0,ball.cooldown-1);ball.weaponCooldown=Math.max(0,ball.weaponCooldown-1);ball.weaponWorldCooldown=Math.max(0,ball.weaponWorldCooldown-1);ball.fireCooldown=Math.max(0,ball.fireCooldown-1);ball.stunned=Math.max(0,ball.stunned-1);ball.flash=Math.max(0,ball.flash-1);
-      if(ball.burn>0){ball.burn--;if(ball.burn%12===0)ball.hp-=.18*(ball.burnStacks||1);if(!ball.burn)ball.burnStacks=0;}
+      if(ball.burn>0){ball.burn--;if(ball.burn%12===0)applyDamage(ball,.18*(ball.burnStacks||1),'burn');if(!ball.burn)ball.burnStacks=0;}
+      if(ball.poisonStacks>0){ball.poisonTick=(ball.poisonTick+1)%30;if(ball.poisonTick===0)applyDamage(ball,poisonDamagePerTick(ball.poisonStacks,ball.f.poisonDamageScale),'poison');}
       if(ball.wallCrash&&ball.wallCrash.frames>0)ball.wallCrash.frames--;
       const rival=sim.balls.find(other=>other!==ball)!,context=ctx(sim,rival,{dt:DT,force:0,damage:0});
       runBehaviorHook(ball,'tick',context);
@@ -36,7 +38,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
       const yWall=wallCollisionSide(ball.y,ball.radius,BOUNDS.top,BOUNDS.bottom,ball.vy);
       if(yWall){const top=yWall===-1;ball.y=top?BOUNDS.top+ball.radius:BOUNDS.bottom-ball.radius;wallX=normalX?wallX:ball.x;wallY=top?BOUNDS.top:BOUNDS.bottom;normalY=top?1:-1;ball.vy*=-1;hitWall=true;runBehaviorHook(ball,'wallHit',context);}
       if(hitWall)runBehaviorHook(ball,'geometryHit',{...context,event:{...context.event,geometry:{x:wallX,y:wallY,nx:normalX,ny:normalY,type:'wall'}}});
-      if(hitWall&&ball.wallCrash&&ball.wallCrash.frames>0){ball.hp-=ball.wallCrash.damage;ball.wallCrash=null;sim.events['WALL SLAM!']=(sim.events['WALL SLAM!']??0)+1;}
+      if(hitWall&&ball.wallCrash&&ball.wallCrash.frames>0){applyDamage(ball,ball.wallCrash.damage,'physical');ball.wallCrash=null;sim.events['WALL SLAM!']=(sim.events['WALL SLAM!']??0)+1;}
       if(collectWeaponWorldContact(ball,BOUNDS))sim.events['CLANG!']=(sim.events['CLANG!']??0)+1;
       const shot=fireRangedWeapon(ball,sim);if(shot)sim.events[shot.label]=(sim.events[shot.label]??0)+1;
     }
@@ -44,7 +46,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
     resolveProjectileHits(stepProjectiles(sim,DT,BOUNDS),sim);
     resolveWeaponHits(sim.balls.map((ball,index)=>collectWeaponHit(ball,sim.balls[1-index],DT)).filter((hit):hit is WeaponHit=>hit!==null),sim);
     resolveBodyHit(sim);
-    if(sim.ticks>60*24){sim.balls[0].hp-=.18;sim.balls[1].hp-=.18;}
+    if(sim.ticks>60*24){applyDamage(sim.balls[0],.18,'fatigue');applyDamage(sim.balls[1],.18,'fatigue');}
     const result=winner(sim);
     if(result)return {...result,hp:{left:sim.balls[0].hp,right:sim.balls[1].hp},ticks:sim.ticks,events:sim.events};
   }
@@ -66,12 +68,12 @@ function resolveProjectileHits(hits:ProjectileHit[],sim:Simulation):void{
   if(!hits.length)return;
   for(const hit of hits.filter(hit=>hit.projectile.type==='grenade')){explodeGrenade(hit.projectile,sim);sim.events['BOOM!']=(sim.events['BOOM!']??0)+1;}
   const damaging=hits.filter((hit):hit is ProjectileHit&{target:Ball}=>hit.projectile.type!=='grenade'&&Boolean(hit.target));
-  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel,explosive:shrapnel};}),sim,'projectile volley');
+  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel,explosive:shrapnel,damageType:shrapnel?'explosive' as const:'physical' as const};}),sim,'projectile volley');
 }
 
 function resolveMineHits(hits:MineHit[],sim:Simulation):void{
   if(!hits.length)return;
-  resolveCombatEvents(hits.map(hit=>({attacker:hit.mine.owner,victim:hit.target,force:hit.force,damage:hit.damage,ability:true,unblockable:true,explosive:true})),sim,'mine blast');
+  resolveCombatEvents(hits.map(hit=>({attacker:hit.mine.owner,victim:hit.target,force:hit.force,damage:hit.damage,ability:true,unblockable:true,explosive:true,damageType:'explosive'})),sim,'mine blast');
   for(const hit of hits){hit.target.vx=hit.launchX;hit.target.vy=hit.launchY;sim.events['MINE!']=(sim.events['MINE!']??0)+1;}
 }
 
@@ -79,13 +81,13 @@ function resolveCombatEvents(events:CombatItem[],sim:Simulation,source:string):v
   const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
   const prepared=events.map(item=>{
     item.attacker.hits++;item.victim.incoming++;
-    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable),explosive:Boolean(item.explosive),attackerSpeed:item.attackerSpeed,targetSpeed:item.targetSpeed};
+    const event:CombatEvent={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable),explosive:Boolean(item.explosive),damageType:item.damageType??'physical',attackerSpeed:item.attackerSpeed,targetSpeed:item.targetSpeed};
     const context=ctx(sim,item.victim,event);
     runBehaviorHook(item.attacker,'modifyOutgoing',context);
     runBehaviorHook(item.victim,'modifyIncoming',{...context,rival:item.attacker});
     return {...item,event,context};
   });
-  for(const hit of prepared)hit.victim.hp-=hit.event.damage;
+  for(const hit of prepared)applyDamage(hit.victim,hit.event.damage,hit.event.damageType);
   for(const hit of prepared){if(hit.impulseX!==undefined&&hit.impulseY!==undefined){applyWeaponMotion({attacker:hit.attacker,victim:hit.victim,impulseX:hit.impulseX,impulseY:hit.impulseY,redirect:hit.redirect??null});sim.hitStop=Math.max(sim.hitStop,Math.round(2+hit.event.force*.25));}runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});}
   const [left,right]=sim.balls;sim.lastExchange={tick:sim.ticks,source,before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }

@@ -28,6 +28,7 @@ export const fighterIcons:Record<string,string> = {
   mothership: wrap('<path fill="#fff" d="M32 7 57 46H7z"/><circle cx="32" cy="34" r="9"/><path d="M32 7v18M14 43l12-7m24 7-12-7M19 51h26"/>'),
   spider: wrap('<path fill="#fff" stroke-width="5" d="M3 8c17 2 26 12 27 38-7 8-18 5-24-8C3 30 2 18 3 8Z"/><path fill="#fff" stroke-width="5" d="M61 8c-17 2-26 12-27 38 7 8 18 5 24-8 3-8 4-20 3-30Z"/>'),
   claymore: wrap('<path fill="#fff" d="m32 5 6 15 16-5-8 15 13 10-17 2-1 17-11-13-13 12 1-17-17-3 14-9-7-16 16 6z"/><circle cx="32" cy="32" r="7"/>'),
+  cobra: wrap('<path fill="#fff" d="M12 13c6-7 14-8 20 0 6-8 14-7 20 0l-5 28c-3 13-27 13-30 0Z"/><path fill="#151515" stroke="none" d="M19 22h8l-4 7Zm18 0h8l-4 7Z"/><path fill="#fff" d="m20 36 7 12 5-10 5 10 7-12"/><path stroke="#d93636" d="M32 39v18m0 0-6 4m6-4 6 4"/>'),
 };
 
 const cache = new Map<string,HTMLImageElement>();

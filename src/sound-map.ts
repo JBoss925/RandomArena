@@ -39,6 +39,7 @@ export const soundCues:Record<SoundCue,SoundDefinition>={
   freeze:{file:'/audio/freeze-crackle.ogg',volume:.3,rate:1.05,variance:.04,cooldownMs:220},
   iceShatter:{file:'/audio/ice-shatter.mp3',volume:.48,rate:1.15,variance:.08,cooldownMs:180},
   fire:{file:'/audio/fire-ignition.mp3',volume:.24,rate:1.55,variance:.1,cooldownMs:180},
+  poison:{volume:.2,rate:1,synth:'drain',cooldownMs:150},
   teleport:{file:'/audio/teleport.mp3',volume:.32,rate:1.45,variance:.05,cooldownMs:180},
   heal:{file:'/audio/healing.mp3',volume:.22,rate:1.1,variance:.04,cooldownMs:260},
   coin:{file:'/audio/goldie-coin.mp3',volume:.75,rate:1,variance:.05,cooldownMs:70},

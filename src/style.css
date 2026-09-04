@@ -163,9 +163,20 @@ canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
 .hp-block > span { display: grid; place-items: center; min-height: 22px; padding: 2px 4px; background: #fff; border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); }
 .hp-block.right { grid-template-columns: 1fr 30px; text-align: right; }
 .hp-block.right span { order: 2; }
-.hp-track { border: 2px solid var(--ink); background: var(--paper); height: 10px; box-shadow: 2px 2px 0 var(--ink); }
-.hp-track i { display: block; width: 100%; height: 100%; background: var(--red); transform-origin: left; transition: width .08s linear; }
+.hp-track { position: relative; overflow: hidden; border: 2px solid var(--ink); background: var(--paper); height: 10px; box-shadow: 2px 2px 0 var(--ink); }
+.hp-track i { position: relative; z-index: 1; display: block; width: 100%; height: 100%; background: var(--red); transform-origin: left; }
 .right .hp-track i { background: var(--blue); transform-origin: right; margin-left: auto; }
+.hp-damage { position: absolute; z-index: 2; inset: 0; pointer-events: none; }
+.hp-damage-segment { position: absolute; top: 0; bottom: 0; background: #ff3d2e; }
+.hp-damage-segment[data-damage="burn"] { background: #ff7a1a; }
+.hp-damage-segment[data-damage="poison"] { background: #245c2a; }
+.hp-damage-segment[data-damage="ice"] { background: #7bdff2; }
+.hp-damage-segment[data-damage="electric"] { background: #d9ef00; }
+.hp-damage-segment[data-damage="explosive"] { background: #ff9d24; }
+.hp-damage-segment[data-damage="echo"] { background: #00a6a6; }
+.hp-damage-segment[data-damage="hazard"] { background: #ff3d2e; }
+.hp-damage-segment[data-damage="fatigue"] { background: #777468; }
+.hp-heal-segment { position: absolute; top: 0; bottom: 0; background: #55dc78; }
 .speed-control { display: flex; align-items: center; align-self: stretch; border-right: var(--structure-rule) solid var(--ink); }
 .speed-control span { padding: 0 9px; font: 8px "IBM Plex Mono"; letter-spacing: .1em; }
 .speed-control select { min-width: 78px; align-self: stretch; padding: 0 38px 0 11px; border: 0; border-left: var(--structure-rule) solid var(--ink); border-radius: 0; background: var(--paper); color: var(--ink); font: 11px "Archivo Black"; cursor: pointer; }

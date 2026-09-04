@@ -2,7 +2,10 @@ export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
 export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
-export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type DamageType = 'physical'|'burn'|'poison'|'ice'|'electric'|'explosive'|'echo'|'hazard'|'fatigue';
+export type HealthDamageReceipt = { sequence:number; from:number; to:number; amount:number; type:DamageType };
+export type HealthHealingReceipt = { sequence:number; from:number; to:number; amount:number };
+export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -60,6 +63,7 @@ export type Fighter = {
   desc: string;
   specs: FighterSpec[];
   bodyDamageScale?: number;
+  poisonDamageScale?: number;
   weapon?: Weapon;
 };
 
@@ -91,6 +95,12 @@ export type Ball = Point & {
   incoming: number;
   burn: number;
   burnStacks: number;
+  poisonStacks: number;
+  poisonTick: number;
+  healthDamageReceipts?: HealthDamageReceipt[];
+  healthDamageSequence?: number;
+  healthHealingReceipts?: HealthHealingReceipt[];
+  healthHealingSequence?: number;
   wallBoost: number;
   wallCrash: WallCrash | null;
   visualStates: Record<string,number>;
@@ -168,6 +178,7 @@ export type CombatEvent = {
   webPull?: boolean;
   geometry?: {x:number;y:number;nx:number;ny:number;type:'wall'|'hazard'};
   explosive?: boolean;
+  damageType?: DamageType;
 };
 
 export type Echo = { attacker: Ball; victim: Ball; frames: number; damage: number };
