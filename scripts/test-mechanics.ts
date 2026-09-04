@@ -13,6 +13,7 @@ import {audioDurationSeconds} from './audio-duration.js';
 import {contrastForeground,contrastRatio} from '../src/color-contrast.js';
 import {castGrapple,grappleHeadContact} from '../src/grapple.js';
 import {wallCollisionSide} from '../src/physics.js';
+import {deployMine,explodeGrenade,stepMines,throwGrenade} from '../src/explosives.js';
 import type {Ball, Fighter, Hazard, Projectile, Side} from '../src/types.js';
 
 const bounds={left:0,right:300,top:0,bottom:300};
@@ -39,6 +40,19 @@ const mothership=makeBall('mothership','left');Object.assign(mothership,{carrier
 const carrierSim={balls:[mothership,target],projectiles:[],ticks:1,hitStop:0} as never;
 runBehaviorHook(mothership,'tick',{sim:carrierSim,rival:target,event:{dt:1/60,force:0,damage:0},random:()=>.5});
 assert.equal((carrierSim as {projectiles:Projectile[]}).projectiles[0]?.type,'heatseeker','Mothership should launch a triangular heatseeker when its bay is ready');
+
+const claymore=makeBall('claymore','left'),mineTarget=makeBall('brick','right');Object.assign(claymore,{x:150,y:150,vx:400,vy:0,powerScale:1});
+const explosiveSim={balls:[claymore,mineTarget],projectiles:[],mines:[],rng:()=>.25,ticks:20,width:300,height:300} as never;
+const mine=deployMine(claymore,explosiveSim);assert.ok(mine.x<claymore.x,'Claymore should lay mines behind its current travel direction');
+Object.assign(mine,{armingFrames:0});Object.assign(mineTarget,{x:mine.x,y:mine.y});
+const mineHits=stepMines(explosiveSim);assert.equal(mineHits[0]?.target,mineTarget,'an armed mine should trigger on any overlapping fighter');
+assert.equal(Math.hypot(mineHits[0].launchX,mineHits[0].launchY),1280,'a mine blast should enforce its massive launch speed');
+const resistedBlast={damage:40,force:18,explosive:true};runBehaviorHook(claymore,'modifyIncoming',{event:resistedBlast});assert.equal(resistedBlast.damage,14,'Claymore should resist 65% of explosive damage');
+Object.assign(mineTarget,{x:240,y:150});const grenade=throwGrenade(claymore,mineTarget,explosiveSim);assert.ok(grenade.vx>0&&Math.abs(grenade.vy)<1e-9,'a grenade should aim at the opponent current position');
+Object.assign(mineTarget,{x:100,y:40});
+Object.assign(grenade,{x:285,y:150,previousX:285,previousY:150,vx:1000,vy:0,armingFrames:0});
+const grenadeImpacts=stepProjectiles(explosiveSim,.1,bounds);assert.equal(grenadeImpacts[0]?.world,true,'a grenade should detonate when geometry intercepts it');
+explodeGrenade(grenadeImpacts[0].projectile,explosiveSim);assert.equal((explosiveSim as {projectiles:Projectile[]}).projectiles.filter(projectile=>projectile.type==='shrapnel').length,12,'a grenade should burst into twelve radial shrapnel pieces');
 
 const spider=makeBall('spider','left'),webTarget=makeBall('brick','right');
 Object.assign(spider,{x:80,y:150,vx:600,vy:0});Object.assign(webTarget,{x:180,y:150,radius:25});
@@ -168,6 +182,7 @@ assert.equal(soundCues.jackpot.file,'/audio/goldie-jackpot.mp3','Goldie jackpot 
 for(const cue of ['lanceCharge','lanceHit','grow','flail','magnetPull','magnetPush'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['droneLaunch','droneHit'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['webShot','webSwing','webImpact','webPerch'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
+for(const cue of ['mineDeploy','explosion','grenade','shrapnel'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 assert.ok(soundCues.coin.volume>=.7,'Goldie stacks should remain audible in the combat mix');
 assert.ok(soundCues.bodyContact.file,'ordinary fighter collisions need an audible foundation recording');
 assert.ok(soundCues.wallContact.file,'ordinary arena contacts need an audible foundation recording');

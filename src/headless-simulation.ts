@@ -5,16 +5,17 @@ import { fireRangedWeapon, stepProjectiles } from './projectiles.js';
 import { createInitialBall } from './initial-conditions.js';
 import { contactForce } from './combat-config.js';
 import { resolveOutcome } from './outcome.js';
-import type { Ball, CombatEvent, Fighter, Outcome, ProjectileHit, Simulation, WeaponHit, Winner } from './types';
+import {explodeGrenade,stepMines} from './explosives.js';
+import type { Ball, CombatEvent, Fighter, MineHit, Outcome, ProjectileHit, Simulation, WeaponHit, Winner } from './types';
 
 const W=720,H=720,DT=1/60,BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
 const noop=()=>{};
 export type MatchResult=Omit<Partial<Outcome>,'winner'>&{winner:Winner;hp:{left:number;right:number};ticks:number;events:Record<string,number>};
-type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean;attackerSpeed?:number;targetSpeed?:number};
+type CombatItem={attacker:Ball;victim:Ball;force:number;damage:number;impulseX?:number;impulseY?:number;redirect?:WeaponHit['redirect'];weapon?:boolean;projectile?:boolean;ability?:boolean;unblockable?:boolean;explosive?:boolean;attackerSpeed?:number;targetSpeed?:number};
 
 export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:string,{maxTicks=60*40}:{maxTicks?:number}={}):MatchResult{
   const rng=mulberry32(hashString(`balance:v1:${seed}`));
-  const sim:Simulation={balls:[createInitialBall(leftFighter,'left',rng),createInitialBall(rightFighter,'right',rng)],projectiles:[],rng,visualRng:rng,ticks:0,hitStop:0,echoes:[],events:{},hazards:[],particles:[],impactPopups:[],lastExchange:null,width:W,height:H,finished:false};
+  const sim:Simulation={balls:[createInitialBall(leftFighter,'left',rng),createInitialBall(rightFighter,'right',rng)],projectiles:[],mines:[],rng,visualRng:rng,ticks:0,hitStop:0,echoes:[],events:{},hazards:[],particles:[],impactPopups:[],lastExchange:null,width:W,height:H,finished:false};
   for(let tick=0;tick<maxTicks;tick++){
     if(sim.hitStop>0){sim.hitStop--;continue;}
     sim.ticks++;
@@ -39,6 +40,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
       if(collectWeaponWorldContact(ball,BOUNDS))sim.events['CLANG!']=(sim.events['CLANG!']??0)+1;
       const shot=fireRangedWeapon(ball,sim);if(shot)sim.events[shot.label]=(sim.events[shot.label]??0)+1;
     }
+    resolveMineHits(stepMines(sim),sim);
     resolveProjectileHits(stepProjectiles(sim,DT,BOUNDS),sim);
     resolveWeaponHits(sim.balls.map((ball,index)=>collectWeaponHit(ball,sim.balls[1-index],DT)).filter((hit):hit is WeaponHit=>hit!==null),sim);
     resolveBodyHit(sim);
@@ -62,14 +64,22 @@ function resolveWeaponHits(hits:WeaponHit[],sim:Simulation):void{
 
 function resolveProjectileHits(hits:ProjectileHit[],sim:Simulation):void{
   if(!hits.length)return;
-  resolveCombatEvents(hits.map(hit=>{const seeker=hit.projectile.type==='heatseeker',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker};}),sim,'projectile volley');
+  for(const hit of hits.filter(hit=>hit.projectile.type==='grenade')){explodeGrenade(hit.projectile,sim);sim.events['BOOM!']=(sim.events['BOOM!']??0)+1;}
+  const damaging=hits.filter((hit):hit is ProjectileHit&{target:Ball}=>hit.projectile.type!=='grenade'&&Boolean(hit.target));
+  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel,explosive:shrapnel};}),sim,'projectile volley');
+}
+
+function resolveMineHits(hits:MineHit[],sim:Simulation):void{
+  if(!hits.length)return;
+  resolveCombatEvents(hits.map(hit=>({attacker:hit.mine.owner,victim:hit.target,force:hit.force,damage:hit.damage,ability:true,unblockable:true,explosive:true})),sim,'mine blast');
+  for(const hit of hits){hit.target.vx=hit.launchX;hit.target.vy=hit.launchY;sim.events['MINE!']=(sim.events['MINE!']??0)+1;}
 }
 
 function resolveCombatEvents(events:CombatItem[],sim:Simulation,source:string):void{
   const before={left:sim.balls[0].hp,right:sim.balls[1].hp};
   const prepared=events.map(item=>{
     item.attacker.hits++;item.victim.incoming++;
-    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable),attackerSpeed:item.attackerSpeed,targetSpeed:item.targetSpeed};
+    const event={force:item.force,damage:item.damage,weapon:item.weapon??Boolean(item.impulseX||item.impulseY),projectile:Boolean(item.projectile),ability:Boolean(item.ability),unblockable:Boolean(item.unblockable),explosive:Boolean(item.explosive),attackerSpeed:item.attackerSpeed,targetSpeed:item.targetSpeed};
     const context=ctx(sim,item.victim,event);
     runBehaviorHook(item.attacker,'modifyOutgoing',context);
     runBehaviorHook(item.victim,'modifyIncoming',{...context,rival:item.attacker});

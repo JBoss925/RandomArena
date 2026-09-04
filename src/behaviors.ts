@@ -1,4 +1,5 @@
 import {castGeometryGrapple,grappleHeadContact} from './grapple.js';
+import {deployMine,throwGrenade} from './explosives.js';
 import type { Ball, Behavior, BehaviorContext, BehaviorHook, Point } from './types';
 
 // Fighter kits are small, composable hook scripts. The engine owns universal
@@ -286,6 +287,17 @@ export const behaviors:Record<string,Behavior>={
       if(!target)return;
       ctx.save();ctx.lineCap='round';ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(target.x,target.y);ctx.stroke();ctx.strokeStyle='#f4f4f0';ctx.lineWidth=3;ctx.setLineDash([4,5]);ctx.lineDashOffset=-sim.ticks*.45;ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#f4f4f0';ctx.strokeStyle='#151515';ctx.lineWidth=3;ctx.beginPath();ctx.arc(target.x,target.y,6,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
     },
+  },
+  explosiveResistance:{modifyIncoming({event}){if(event.explosive)event.damage*=.35;}},
+  ordnanceLayer:{
+    tick({ball,rival,sim,random,showImpact,emitParticles,playSound}){
+      ball.mineCooldown??=90+Math.floor(random()*60);ball.grenadeCooldown??=100+Math.floor(random()*70);
+      if(ball.frozen||ball.stunned)return;
+      ball.mineCooldown=Math.max(0,ball.mineCooldown-1);ball.grenadeCooldown=Math.max(0,ball.grenadeCooldown-1);
+      if(!ball.mineCooldown){const mine=deployMine(ball,sim);ball.mineCooldown=220+Math.floor(random()*60);pulse(ball,'mineDrop',16);showImpact('MINE SET!',mine);emitParticles(mine,{count:8,color:'#ffd05a',speed:90,gravity:180,kind:'metal',size:5});playSound('mineDeploy');}
+      if(!ball.grenadeCooldown){const grenade=throwGrenade(ball,rival,sim);ball.grenadeCooldown=210+Math.floor(random()*60);pulse(ball,'grenadeThrow',14);showImpact('GRENADE!',grenade);emitParticles(grenade,{count:8,color:'#ffb14a',speed:150,gravity:120,kind:'smoke',size:6});playSound('grenade');}
+    },
+    draw({ball,ctx}){const ready=1-Math.min(1,(ball.mineCooldown??0)/200);ctx.save();ctx.translate(ball.x,ball.y);ctx.rotate(ball.angle);ctx.globalAlpha=.35+ready*.65;ctx.fillStyle='#ffd05a';ctx.strokeStyle='#151515';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-8,ball.radius-5);ctx.lineTo(0,ball.radius+9);ctx.lineTo(8,ball.radius-5);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();},
   },
   randomSteering:{beforeMove({ball,random}){ball.vx+=(random()-.5)*20;ball.vy+=(random()-.5)*20;}},
   combatPull:{beforeMove({ball,rival,event}){const dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1,dt=event.dt??0;ball.vx+=dx/d*90*dt;ball.vy+=dy/d*90*dt;}},

@@ -21,6 +21,7 @@ export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:nu
   const hits:ProjectileHit[]=[];
   for(const projectile of sim.projectiles){
     projectile.armingFrames=Math.max(0,(projectile.armingFrames??0)-1);
+    projectile.rotation=(projectile.rotation??0)+(projectile.spin??0)*dt;
     const target=sim.balls.find(ball=>ball.side!==projectile.side&&ball.hp>0);
     if(projectile.type==='heatseeker'&&target){
       const currentAngle=Math.atan2(projectile.vy,projectile.vx),targetAngle=Math.atan2(target.y-projectile.y,target.x-projectile.x);
@@ -35,13 +36,17 @@ export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:nu
       const hit=segmentCircleHit(from,to,hazard.x,hazard.y,hazard.r+projectile.radius);
       if(hit&&(!first||hit.t<first.t))first={...hit,type:'world'};
     }
-    if(target&&!projectile.armingFrames){
-      const hit=segmentCircleHit(from,to,target.x,target.y,target.radius+projectile.radius);
-      if(hit&&(!first||hit.t<first.t))first={...hit,type:'fighter',target};
+    if(!projectile.armingFrames){
+      const friendlyFire=projectile.type==='grenade'||projectile.type==='shrapnel';
+      for(const candidate of sim.balls.filter(ball=>ball.hp>0&&(friendlyFire||ball.side!==projectile.side))){
+        const hit=segmentCircleHit(from,to,candidate.x,candidate.y,candidate.radius+projectile.radius);
+        if(hit&&(!first||hit.t<first.t))first={...hit,type:'fighter',target:candidate};
+      }
     }
     if(first){
       projectile.x=first.x;projectile.y=first.y;projectile.dead=true;
       if(first.type==='fighter'&&first.target)hits.push({projectile,target:first.target,x:first.x,y:first.y});
+      else if(projectile.type==='grenade')hits.push({projectile,x:first.x,y:first.y,world:true});
     }else{projectile.x=to.x;projectile.y=to.y;projectile.life--;if(projectile.life<=0)projectile.dead=true;}
   }
   sim.projectiles=sim.projectiles.filter(projectile=>!projectile.dead);
