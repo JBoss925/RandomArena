@@ -68,7 +68,7 @@ function resolveProjectileHits(hits:ProjectileHit[],sim:Simulation):void{
   if(!hits.length)return;
   for(const hit of hits.filter(hit=>hit.projectile.type==='grenade')){explodeGrenade(hit.projectile,sim);sim.events['BOOM!']=(sim.events['BOOM!']??0)+1;}
   const damaging=hits.filter((hit):hit is ProjectileHit&{target:Ball}=>hit.projectile.type!=='grenade'&&Boolean(hit.target));
-  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel,explosive:shrapnel,damageType:shrapnel?'explosive' as const:'physical' as const};}),sim,'projectile volley');
+  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',timeShard=hit.projectile.type==='timeShard',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel||timeShard,explosive:shrapnel,damageType:shrapnel?'explosive' as const:timeShard?'time' as const:'physical' as const};}),sim,'projectile volley');
 }
 
 function resolveMineHits(hits:MineHit[],sim:Simulation):void{

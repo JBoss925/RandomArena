@@ -1,6 +1,9 @@
 const wrap = (body:string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#151515" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 export const fighterIcons:Record<string,string> = {
+  corsair: wrap('<path fill="#fff" d="M9 28 20 12l12 8 12-8 11 16-8 8H17Z"/><path d="M18 43h28M25 43v10m14-10v10"/>'),
+  dynamo: wrap('<path fill="#fff" d="M12 27V15h10v-5h11v5h11v6h9v23L39 55H20l-8-13Z"/><path d="M22 16v16m11-16v16m11-10v15M12 33h20l6 10"/>'),
+  hourglass: wrap('<path fill="#fff" d="M15 8h34v8L37 32l12 16v8H15v-8l12-16-12-16Z"/><path d="M15 8h34M15 56h34M24 20h16M24 48l8-10 8 10Z"/>'),
   volt: wrap('<path fill="#fff" d="M37 5 15 35h15l-3 24 22-34H34z"/>'),
   brick: wrap('<path fill="#fff" d="M7 14h50v36H7z"/><path d="M7 27h50M7 39h50M23 14v13m20-13v13M16 27v12m31-12v12M26 39v11"/>'),
   mint: wrap('<path fill="#fff" d="M33 54C12 44 10 20 32 9c23 10 20 34 1 45Z"/><path d="M32 14v34M19 31h26"/>'),

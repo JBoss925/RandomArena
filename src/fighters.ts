@@ -33,15 +33,34 @@ export const fighters:Fighter[]=[
   {id:'cobra',name:'COBRA',color:'#2f8f46',accent:'#d7ff63',speed:1,power:1,mass:1.05,behaviors:['venom'],ability:'DEATH COIL',desc:'A patient attrition hunter whose bites barely hurt on contact. Every Venom Hit adds another equal, permanent dose of Poison, turning a long fight into an accelerating race against the clock. Poison attacks from within and ignores physical protection.',specs:[spec('stack','Poison applied','1 stack per hit'),spec('damage','Damage per Poison stack','1.24 HP/s'),spec('damage','Body Hit damage','12% of standard'),spec('clock','Poison duration','Permanent'),spec('shield','Armor bypass','100%')]},
 ];
 
+fighters.push(
+  {id:'corsair',name:'CORSAIR',color:'#147d91',accent:'#ffd478',speed:1.04,power:1,mass:.94,behaviors:['crescentRaider'],ability:'RETURN TO SENDER',desc:'A swaggering raider with a returning crescent. Cast ricochets off terrain before Recall bends it back toward Corsair. The stronger Backslash can catch an opponent from behind; the blade must return before another throw.',specs:[spec('damage','Cast damage','10 HP'),spec('damage','Backslash damage','17 HP'),spec('clock','Recall delay','0.75 seconds'),spec('clock','Catch recovery','1.42 seconds')]},
+  {id:'dynamo',name:'DYNAMO',color:'#de5830',accent:'#ffe8aa',speed:.96,power:1,mass:1.04,behaviors:['rocketBoxer'],ability:'HEAVY DELIVERY',desc:'A headstrong rocket boxer with a repeating attack cycle. Wind Up tracks the opponent, then Dash commits Dynamo to a straight line. Contact lands Rocket Punch, which hits heavier fighters harder and partially bypasses shields; a missed Dash triggers Ground Burst instead. Both outcomes end in Recovery. Impact Guard caps crushing body and melee hits, but weapons deal extra damage before the cap and Poison bypasses it entirely.',specs:[spec('clock','Wind Up','0.5 seconds'),spec('damage','Rocket Punch bonus','22–34 HP'),spec('damage','Ground Burst damage','13 HP'),spec('clock','Recovery','0.5 seconds'),spec('shield','Impact Guard: body','12 HP / 16 in Dash'),spec('shield','Impact Guard: melee','20 HP'),spec('shield','Rocket Punch shield bypass','50%'),spec('damage','Vulnerabilities','Weapons +30% · Poison +50%')]},
+  {id:'hourglass',name:'HOURGLASS',color:'#7965b5',accent:'#f5d184',speed:1.06,power:1,mass:.96,behaviors:['timeThief'],ability:'BORROWED TIME',desc:'A time thief that places a Bookmark while damage taken charges Time Break. When Rewind triggers, Hourglass returns to the Bookmark with reversed momentum and fires twelve radial Time Shard projectiles from the position it left. The first Time Shard to connect triggers Time Break; walls and hazards absorb the volley, so an opponent can evade it.',specs:[spec('clock','Bookmark duration','1.75 seconds'),spec('projectile','Time Shards','12 projectiles'),spec('damage','Time Break damage','3–8.5 HP'),spec('gauge','Time Break charge cap','55 HP taken'),spec('clock','Rewind recovery','1.67 seconds')]},
+);
+
 // Balance coefficients are kept separate from kit identity so mechanical tuning
 // never obscures the readable fantasy definitions above.
 const powerTuning:Record<string,number>={volt:.768,brick:.7,mint:.9083,goldie:1.0686,void:.7613,bubble:1.1287,moss:.8565,glitch:.9484,frost:.78,ember:.788,echo:.7947,rook:.601,comet:1.4159,static:.9283,anchor:.8014,orbit:1.0686,saber:.768,slugger:.6945,shotgun:1.2823,sniper:1.603,lance:1.15,grower:1.1488,flail:1.22,polar:1.32,mothership:.5,spider:.95,claymore:.9,cobra:1};
 const bodyDamageTuning:Record<string,number>={volt:.7,brick:.95,mint:.75,goldie:.55,void:.8,bubble:.5,moss:.65,glitch:.6,frost:.55,ember:.65,echo:.6,rook:.8,comet:.5,static:.6,anchor:.65,orbit:.45,saber:.22,slugger:.35,shotgun:.35,sniper:.25,lance:.1,grower:.68,flail:.14,polar:.58,mothership:.625,spider:.62,claymore:.38,cobra:.12};
 const bodyMaterials:Record<string,Material>={volt:'plastic',brick:'stone',mint:'rubber',goldie:'metal',void:'energy',bubble:'rubber',moss:'wood',glitch:'energy',frost:'glass',ember:'ceramic',echo:'glass',rook:'metal',comet:'glass',static:'energy',anchor:'metal',orbit:'metal',saber:'plastic',slugger:'plastic',shotgun:'plastic',sniper:'plastic',lance:'wood',grower:'rubber',flail:'metal',polar:'energy',mothership:'metal',spider:'rubber',claymore:'metal',cobra:'rubber'};
 const weaponMaterials:Record<string,Material>={sword:'metal',bat:'wood',lance:'metal',shotgun:'metal',sniper:'metal'};
+Object.assign(powerTuning,{corsair:1,dynamo:1.25,hourglass:1.64});
+bodyDamageTuning.dynamo=.12;
+fighters.find(f=>f.id==='dynamo')!.poisonDamageScale=1.5;
 for(const fighter of fighters){
-  fighter.power=powerTuning[fighter.id];fighter.bodyDamageScale=bodyDamageTuning[fighter.id];fighter.material=bodyMaterials[fighter.id]??'plastic';
+  const shineColors:Record<string,string>={corsair:'#b6dfe7',dynamo:'#ffc6b5',hourglass:'#d8cfee'};
+  if(shineColors[fighter.id])fighter.shineColor=shineColors[fighter.id];
+  if(fighter.id==='hourglass')fighter.accent=fighter.color;
+  fighter.power=powerTuning[fighter.id]??1;fighter.bodyDamageScale=bodyDamageTuning[fighter.id]??.35;fighter.material=bodyMaterials[fighter.id]??'plastic';
   if(fighter.weapon)fighter.weapon.material=weaponMaterials[fighter.weapon.type]??'plastic';
+  const damageSpecs:Record<string,Record<string,string>>={
+    corsair:{'Cast damage':`${(10*fighter.power).toFixed(1)} HP`,'Backslash damage':`${(17*fighter.power).toFixed(1)} HP`},
+    dynamo:{'Rocket Punch bonus':`${(22*fighter.power).toFixed(1)}–${(34*fighter.power).toFixed(1)} HP`,'Ground Burst damage':`${(13*fighter.power).toFixed(1)} HP`},
+    hourglass:{'Time Break damage':`${(3*fighter.power).toFixed(1)}–${(8.5*fighter.power).toFixed(1)} HP`},
+  };
+  for(const item of fighter.specs){const value=damageSpecs[fighter.id]?.[item.label];if(value)item.value=value;}
+  if(fighter.id==='corsair')fighter.specs.push(spec('shield','Backslash shield bypass','50%'));
 }
 
 export function getFighter(id:string):Fighter|undefined{return fighters.find(fighter=>fighter.id===id);}

@@ -2,6 +2,7 @@ import {castGeometryGrapple,grappleHeadContact} from './grapple.js';
 import {deployMine,throwGrenade} from './explosives.js';
 import {impactSpeedScale} from './combat-config.js';
 import {applyDamage,applyHealing} from './damage.js';
+import {advancedBehaviors} from './advanced-behaviors.js';
 import type { Ball, Behavior, BehaviorContext, BehaviorHook, Point } from './types';
 
 // Fighter kits are small, composable hook scripts. The engine owns universal
@@ -17,6 +18,7 @@ const growBall=(ball:Ball,amount:number):boolean=>{
 };
 
 export const behaviors:Record<string,Behavior>={
+  ...advancedBehaviors(runBehaviorHook),
   wallCharge:{
     wallHit({ball,emitParticles,playSound}){ball.voltCharge=Math.min(5,(ball.voltCharge??0)+1);const previous=ball.wallBoost;ball.wallBoost=Math.min(1.42,ball.wallBoost*1.025);const gain=ball.wallBoost/previous;ball.vx*=gain;ball.vy*=gain;pulse(ball,'electric',12);emitParticles(ball,{count:4,color:'#e5ff00',speed:160,gravity:0,kind:'bolt',size:7});playSound('electric',{volume:.45,rate:1.2});},
     modifyOutgoing({ball,rival,event}){const charge=ball.voltCharge??0;if(charge){const runawayBonus=rival.f.behaviors.includes('continuousAcceleration')&&Math.hypot(rival.vx,rival.vy)>700?1:0;event.damage+=charge*1.3+runawayBonus;event.voltRelease=charge;event.parryPenetration=.25;}},

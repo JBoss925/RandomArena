@@ -20,6 +20,7 @@ export function fireRangedWeapon(ball:Ball,sim:Simulation):({label:string}&Point
 export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:number,bounds:Bounds,hazards:Hazard[]=[]):ProjectileHit[]{
   const hits:ProjectileHit[]=[];
   for(const projectile of sim.projectiles){
+    if(projectile.dead)continue;
     projectile.armingFrames=Math.max(0,(projectile.armingFrames??0)-1);
     projectile.rotation=(projectile.rotation??0)+(projectile.spin??0)*dt;
     const target=sim.balls.find(ball=>ball.side!==projectile.side&&ball.hp>0);
@@ -45,7 +46,13 @@ export function stepProjectiles(sim:Pick<Simulation,'projectiles'|'balls'>,dt:nu
     }
     if(first){
       projectile.x=first.x;projectile.y=first.y;projectile.dead=true;
-      if(first.type==='fighter'&&first.target)hits.push({projectile,target:first.target,x:first.x,y:first.y});
+      if(first.type==='fighter'&&first.target){
+        hits.push({projectile,target:first.target,x:first.x,y:first.y});
+        // Time Break is one radial attack: the first shard to connect resolves
+        // the volley while the other visible rays dissipate.
+        if(projectile.type==='timeShard'&&projectile.volleyId)
+          for(const sibling of sim.projectiles)if(sibling.volleyId===projectile.volleyId)sibling.dead=true;
+      }
       else if(projectile.type==='grenade')hits.push({projectile,x:first.x,y:first.y,world:true});
     }else{projectile.x=to.x;projectile.y=to.y;projectile.life--;if(projectile.life<=0)projectile.dead=true;}
   }

@@ -2,10 +2,10 @@ export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
 export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
-export type DamageType = 'physical'|'burn'|'poison'|'ice'|'electric'|'explosive'|'echo'|'hazard'|'fatigue';
+export type DamageType = 'physical'|'burn'|'poison'|'ice'|'electric'|'explosive'|'echo'|'time'|'hazard'|'fatigue';
 export type HealthDamageReceipt = { sequence:number; from:number; to:number; amount:number; type:DamageType };
 export type HealthHealingReceipt = { sequence:number; from:number; to:number; amount:number };
-export type SoundCue = 'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -53,6 +53,7 @@ export type Fighter = {
   color: string;
   secondaryColor?: string;
   accent: string;
+  shineColor?: string;
   material?: Material;
   speed: number;
   power: number;
@@ -104,6 +105,12 @@ export type Ball = Point & {
   wallBoost: number;
   wallCrash: WallCrash | null;
   visualStates: Record<string,number>;
+  crescent?: {x:number;y:number;vx:number;vy:number;age:number;returning:boolean;outHit:boolean;backHit:boolean};
+  crescentCooldown?: number;
+  rocket?: {phase:'windup'|'dash'|'recovery';frames:number;angle:number;hit:boolean};
+  rocketCooldown?: number;
+  timeAnchor?: {x:number;y:number;vx:number;vy:number;frames:number;damage:number};
+  timeCooldown?: number;
   voltCharge?: number;
   armorPlates?: number;
   armorRepair?: number;
@@ -162,6 +169,7 @@ export type CombatEvent = {
   armorPenetration?: number;
   armorDamage?: number;
   shieldPenetration?: number;
+  rocketGuard?: boolean;
   healingScale?: number;
   voltRelease?: number;
   bubblePop?: boolean;
@@ -182,7 +190,7 @@ export type CombatEvent = {
 };
 
 export type Echo = { attacker: Ball; victim: Ball; frames: number; damage: number };
-export type ProjectileType = RangedWeapon['type']|'heatseeker'|'grenade'|'shrapnel';
+export type ProjectileType = RangedWeapon['type']|'heatseeker'|'grenade'|'shrapnel'|'timeShard';
 export type Projectile = Point & {
   shooter: Ball;
   side: Side;
@@ -203,6 +211,7 @@ export type Projectile = Point & {
   armingFrames?: number;
   rotation?: number;
   spin?: number;
+  volleyId?: string;
 };
 
 export type Mine = Point & {

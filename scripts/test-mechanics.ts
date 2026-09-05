@@ -17,11 +17,54 @@ import {contrastForeground,contrastRatio} from '../src/color-contrast.js';
 import {castGrapple,grappleHeadContact} from '../src/grapple.js';
 import {wallCollisionSide} from '../src/physics.js';
 import {deployMine,explodeGrenade,stepMines,throwGrenade} from '../src/explosives.js';
-import type {Ball, Fighter, Hazard, Projectile, Side} from '../src/types.js';
+import type {Ball, CombatEvent, Fighter, Hazard, Projectile, Side} from '../src/types.js';
 
 const bounds={left:0,right:300,top:0,bottom:300};
 const fighter=(id:string):Fighter=>{const result=getFighter(id);assert.ok(result);return result;};
 const makeBall=(id:string,side:Side):Ball=>createInitialBall(fighter(id),side,()=>.5);
+for(const id of ['corsair','dynamo','hourglass']){
+  const shineColors:Record<string,string>={corsair:'#b6dfe7',dynamo:'#ffc6b5',hourglass:'#d8cfee'};
+  assert.equal(fighter(id).shineColor,shineColors[id],`${id} should have a pale body-tinted shine independent of its effects`);
+  const first=simulateMatch(fighter(id),fighter('anchor'),`cycle-${id}`);
+  assert.deepEqual(first,simulateMatch(fighter(id),fighter('anchor'),`cycle-${id}`),`${id} must replay its entire attack cycle deterministically`);
+  const phases:Record<string,string[]>={corsair:['CAST!','RECALL!','CRESCENT!','BACKSLASH!'],dynamo:['WIND UP!','DASH!','ROCKET PUNCH!'],hourglass:['BOOKMARK!','REWIND!']};
+  for(const phase of phases[id])assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
+}
+const boxer=makeBall('dynamo','left'),boxerTarget=makeBall('brick','right');
+const dynamoInfo=fighter('dynamo');
+for(const term of ['Wind Up','Dash','Rocket Punch','Ground Burst','Recovery','Impact Guard'])assert.match(dynamoInfo.desc,new RegExp(term),`Dynamo should consistently explain ${term}`);
+assert.deepEqual(dynamoInfo.specs.map(item=>item.label),['Wind Up','Rocket Punch bonus','Ground Burst damage','Recovery','Impact Guard: body','Impact Guard: melee','Rocket Punch shield bypass','Vulnerabilities'],'Dynamo stats should follow the same named attack cycle as its description');
+assert.equal(fighter('hourglass').accent,fighter('hourglass').color,'Hourglass effects should use its purple body color');
+const hourglassInfo=fighter('hourglass');
+for(const term of ['Bookmark','Rewind','Time Shard','Time Break'])assert.match(hourglassInfo.desc,new RegExp(term),`Hourglass should consistently explain ${term}`);
+assert.deepEqual(hourglassInfo.specs.map(item=>item.label),['Bookmark duration','Time Shards','Time Break damage','Time Break charge cap','Rewind recovery'],'Hourglass stats should follow the same named attack cycle as its description');
+boxer.rocket={phase:'dash',frames:28,angle:0,hit:false};
+const punch={damage:2,force:5};runBehaviorHook(boxer,'modifyOutgoing',{rival:boxerTarget,event:punch});
+assert.ok(punch.damage>2,'Rocket Punch must add its committed hit bonus');
+runBehaviorHook(boxer,'dealHit',{rival:boxerTarget,event:punch});
+const secondPunch={damage:2,force:5};runBehaviorHook(boxer,'modifyOutgoing',{rival:boxerTarget,event:secondPunch});
+assert.equal(secondPunch.damage,2,'one dash must not repeatedly trigger the punch bonus against a trapped opponent');
+const ordinaryHit={damage:100,force:10};
+runBehaviorHook(boxer,'modifyIncoming',{rival:boxerTarget,event:ordinaryHit});
+assert.ok(ordinaryHit.damage<100,'Dynamo should cap heavy ordinary impacts with its guard');
+const poisonHp=boxer.hp;applyDamage(boxer,5,'poison');
+assert.equal(boxer.hp,poisonHp-5,'Dynamo guard must not reduce internal Poison damage');
+const guardBypass={damage:10,force:10,ability:true};
+runBehaviorHook(boxer,'modifyIncoming',{rival:boxerTarget,event:guardBypass});
+assert.equal(guardBypass.damage,10,'special ability damage should bypass the ordinary impact cap');
+boxer.rocket={phase:'dash',frames:28,angle:0,hit:false};
+const lightTarget=makeBall('volt','right'),heavyTarget=makeBall('anchor','right');
+const lightPunch:CombatEvent={damage:2,force:5},heavyPunch:CombatEvent={damage:2,force:5};
+runBehaviorHook(boxer,'modifyOutgoing',{rival:lightTarget,event:lightPunch});
+runBehaviorHook(boxer,'modifyOutgoing',{rival:heavyTarget,event:heavyPunch});
+assert.ok(heavyPunch.damage>lightPunch.damage,'Rocket Punch must reward connecting with a heavier opponent');
+assert.equal(heavyPunch.shieldPenetration,.5,'Rocket Punch should preserve half of its damage through a bubble shield');
+const crushingMelee:CombatEvent={damage:100,force:10,weapon:true};
+runBehaviorHook(boxer,'modifyIncoming',{rival:heavyTarget,event:crushingMelee});
+assert.equal(crushingMelee.damage,20,'Dynamo padding should cap crushing melee hits after vulnerability');
+const rangedImpact:CombatEvent={damage:100,force:10,weapon:true,projectile:true};
+runBehaviorHook(boxer,'modifyIncoming',{rival:heavyTarget,event:rangedImpact});
+assert.equal(rangedImpact.damage,130,'projectiles must bypass the melee cap and retain their vulnerability bonus');
 const damageTarget=makeBall('brick','right');damageTarget.healthDamageReceipts=[];
 applyDamage(damageTarget,15,'poison');
 assert.equal(damageTarget.hp,85,'typed damage should reduce HP immediately');
@@ -51,6 +94,11 @@ const projectile=():Projectile=>({shooter,side:'left',x:100,y:100,previousX:100,
 
 let sim={balls:[shooter,target],projectiles:[projectile()]};
 assert.equal(stepProjectiles(sim,.1,bounds).length,1,'a clear projectile should hit the fighter');
+const timeShard=():Projectile=>({...projectile(),type:'timeShard',color:'#7965b5',volleyId:'test-time-break'});
+sim={balls:[shooter,target],projectiles:[timeShard(),{...timeShard(),y:120,previousY:120}]};
+const timeHits=stepProjectiles(sim,.1,bounds);
+assert.equal(timeHits.length,1,'a Time Break shard should use swept fighter collision');
+assert.equal(sim.projectiles.length,0,'the rest of a Time Break volley should dissipate after its first hit');
 
 sim={balls:[shooter,target],projectiles:[projectile()]};
 const obstacle:Hazard={id:'test',type:'pillar',x:145,y:100,r:10,value:0};

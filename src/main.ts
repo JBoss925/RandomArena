@@ -295,8 +295,8 @@ function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   const before={left:s.balls[0].hp,right:s.balls[1].hp};
   const prepared=damaging.map(hit=>{
     const attacker=hit.projectile.shooter,victim=hit.target;attacker.hits++;victim.incoming++;
-    const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',interceptScale=seeker?1+Math.min(1.5,Math.hypot(victim.vx,victim.vy)/550):1;
-    const event:CombatEvent={force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel,explosive:shrapnel,damageType:shrapnel?'explosive':'physical'};
+    const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',timeShard=hit.projectile.type==='timeShard',interceptScale=seeker?1+Math.min(1.5,Math.hypot(victim.vx,victim.vy)/550):1;
+    const event:CombatEvent={force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel||timeShard,explosive:shrapnel,damageType:shrapnel?'explosive':timeShard?'time':'physical'};
     const context={sim:s,rival:victim,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     runBehaviorHook(attacker,'modifyOutgoing',context);runBehaviorHook(victim,'modifyIncoming',{...context,rival:attacker});
     return{...hit,attacker,victim,event,context};
@@ -304,11 +304,12 @@ function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   for(const hit of prepared)applyDamage(hit.victim,hit.event.damage,hit.event.damageType);
   for(const hit of prepared){
     hit.victim.flash=8;runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});
-    impact(hit.projectile.type==='sniper'?'HEADSHOT!':hit.projectile.type==='heatseeker'?'SEEKER HIT!':hit.projectile.type==='shrapnel'?'SHRAPNEL!':'PELLET!',{x:hit.x,y:hit.y});
+    impact(hit.projectile.type==='sniper'?'HEADSHOT!':hit.projectile.type==='heatseeker'?'SEEKER HIT!':hit.projectile.type==='shrapnel'?'SHRAPNEL!':hit.projectile.type==='timeShard'?'TIME BREAK!':'PELLET!',{x:hit.x,y:hit.y});
     if(hit.projectile.type==='heatseeker')playSound('droneHit');
     else if(hit.projectile.type==='shrapnel')playSound('shrapnel');
+    else if(hit.projectile.type==='timeShard')playSound('timeRewind',{volume:.7,rate:1.25});
     materialContact({x:hit.x,y:hit.y},'metal',hit.victim.f.material,hit.event.force,{balls:[hit.victim],volume:hit.projectile.type==='sniper'?1.25:.8});
-    emitParticles({x:hit.x,y:hit.y},{count:hit.projectile.type==='sniper'?12:hit.projectile.type==='heatseeker'?16:4,color:hit.projectile.color,speed:hit.projectile.type==='sniper'?470:hit.projectile.type==='heatseeker'?410:330,gravity:180,kind:hit.projectile.type==='heatseeker'?'star':hit.projectile.type==='sniper'?'star':'spark',size:hit.projectile.type==='sniper'?9:hit.projectile.type==='heatseeker'?8:6});
+    emitParticles({x:hit.x,y:hit.y},{count:hit.projectile.type==='sniper'?12:hit.projectile.type==='heatseeker'?16:hit.projectile.type==='timeShard'?18:4,color:hit.projectile.color,speed:hit.projectile.type==='sniper'?470:hit.projectile.type==='heatseeker'?410:hit.projectile.type==='timeShard'?390:330,gravity:hit.projectile.type==='timeShard'?0:180,kind:hit.projectile.type==='heatseeker'?'star':hit.projectile.type==='sniper'?'star':hit.projectile.type==='timeShard'?'pixel':'spark',size:hit.projectile.type==='sniper'?9:hit.projectile.type==='heatseeker'?8:6});
   }
   const [left,right]=s.balls;s.lastExchange={tick:s.ticks,source:'projectile volley',before,after:{left:left.hp,right:right.hp},damageTaken:{left:before.left-left.hp,right:before.right-right.hp}};
 }
@@ -468,6 +469,7 @@ function drawProjectiles(projectiles:Projectile[]):void{
     }
     if(p.type==='grenade'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#151515';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,p.radius,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-p.radius,0);ctx.lineTo(p.radius,0);ctx.stroke();ctx.fillStyle='#151515';ctx.fillRect(-3,-p.radius-6,6,7);ctx.restore();continue;}
     if(p.type==='shrapnel'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#151515';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.radius*1.8,0);ctx.lineTo(-p.radius,-p.radius);ctx.lineTo(-p.radius,p.radius);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();continue;}
+    if(p.type==='timeShard'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#eee9ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.radius*1.8,0);ctx.lineTo(0,p.radius);ctx.lineTo(-p.radius*1.8,0);ctx.lineTo(0,-p.radius);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();continue;}
     ctx.strokeStyle=p.color;ctx.fillStyle=p.type==='sniper'?'#f3efdf':p.color;ctx.lineWidth=p.type==='sniper'?5:3;ctx.beginPath();ctx.moveTo(p.previousX,p.previousY);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();ctx.restore();
   }
 }
@@ -520,7 +522,7 @@ function drawBall(b:Ball):void {
   ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,b.radius,0,Math.PI*2);
   if(b.f.secondaryColor){ctx.save();ctx.clip();ctx.fillStyle=b.f.color;ctx.fillRect(-b.radius,-b.radius,b.radius,b.radius*2);ctx.fillStyle=b.f.secondaryColor;ctx.fillRect(0,-b.radius,b.radius,b.radius*2);ctx.restore();ctx.stroke();}
   else{ctx.fillStyle=b.f.color;ctx.fill();ctx.stroke();}
-  ctx.fillStyle=b.f.accent;ctx.beginPath();ctx.arc(-b.radius*.28,-b.radius*.3,b.radius*.22,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=b.f.shineColor??b.f.accent;ctx.beginPath();ctx.arc(-b.radius*.28,-b.radius*.3,b.radius*.22,0,Math.PI*2);ctx.fill();
   drawBallStateTexture(b);
   ctx.restore();
   drawWeapon(ctx,b);

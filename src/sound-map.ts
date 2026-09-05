@@ -18,6 +18,15 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  crescentCast:{file:'/audio/lance-whoosh.mp3',volume:.35,rate:1.3,cooldownMs:100},
+  crescentRecall:{volume:.2,rate:1,synth:'whoosh',cooldownMs:150},
+  crescentHit:{file:'/audio/metal-tap.ogg',volume:.4,rate:.9,cooldownMs:90},
+  crescentCatch:{file:'/audio/mechanical-clank.mp3',volume:.2,rate:1.3,cooldownMs:100},
+  rocketWindup:{volume:.18,rate:1,synth:'rumble',cooldownMs:200},
+  rocketPunch:{file:'/audio/soft-hit.ogg',volume:.65,rate:.75,cooldownMs:100},
+  rocketBurst:{file:'/audio/shotgun-fire.mp3',volume:.45,rate:.8,cooldownMs:180},
+  timeMark:{file:'/audio/goldie-coin.mp3',volume:.2,rate:1.2,cooldownMs:180},
+  timeRewind:{file:'/audio/teleport.mp3',volume:.4,rate:.85,cooldownMs:180},
   // Foundation transients guarantee that ordinary contacts are always audible.
   // The material cues below are layered on top as quieter character accents.
   bodyContact:{file:'/audio/body-contact.mp3',volume:.72,rate:1,variance:.1,cooldownMs:34},
