@@ -14,6 +14,7 @@ import {layoutHealthBar} from '../src/health-bar.js';
 import {statSync} from 'node:fs';
 import {audioDurationSeconds} from './audio-duration.js';
 import {contrastForeground,contrastRatio} from '../src/color-contrast.js';
+import {specIconNames} from '../src/spec-icons.js';
 import {castGrapple,grappleHeadContact} from '../src/grapple.js';
 import {wallCollisionSide} from '../src/physics.js';
 import {deployMine,explodeGrenade,stepMines,throwGrenade} from '../src/explosives.js';
@@ -22,6 +23,23 @@ import type {Ball, CombatEvent, Fighter, Hazard, Projectile, Side} from '../src/
 const bounds={left:0,right:300,top:0,bottom:300};
 const fighter=(id:string):Fighter=>{const result=getFighter(id);assert.ok(result);return result;};
 const makeBall=(id:string,side:Side):Ball=>createInitialBall(fighter(id),side,()=>.5);
+for(const candidate of fighters){
+  assert.equal(new Set(candidate.specs.map(item=>item.label)).size,candidate.specs.length,`${candidate.id} must not repeat an info-block label`);
+  for(const item of candidate.specs){
+    assert.ok(specIconNames.has(item.icon),`${candidate.id} uses unknown info-block icon ${item.icon}`);
+    assert.doesNotMatch(`${item.label} ${item.value}`,/\b(?:px|pixels?|ticks?|frames?|force|acceleration)\b/i,`${candidate.id} must not expose engine units in its info card`);
+    assert.doesNotMatch(item.value,/\b(?:reduction|healing|duration|interval|recharge)\b/i,`${candidate.id} must keep the stat name in the label, not the value`);
+    if(item.icon==='rotate')assert.match(item.value,/^\d+(?:\.\d+)? seconds\/spin$/,`${candidate.id} rotations must use seconds/spin`);
+    if(item.icon==='clock'&&item.value!=='Permanent')assert.match(item.value,/seconds?/,`${candidate.id} timings must be expressed in seconds`);
+    if(!/\d/.test(item.value))assert.match(item.value,/^(?:Permanent|Heavy direct hit|Each direct hit)$/,`${candidate.id} has a nonnumeric block that belongs in its description`);
+  }
+}
+for(const [behavior,status] of [['afterburn','Burn'],['venom','Poison']] as const){
+  const candidate=fighters.find(item=>item.behaviors.includes(behavior));assert.ok(candidate);
+  assert.ok(candidate.specs.some(item=>item.label===`${status} damage`&&/HP\/s/.test(item.value)),`${candidate.id} must disclose ${status} damage over time`);
+  assert.ok(candidate.specs.some(item=>item.label===`${status} duration`),`${candidate.id} must disclose ${status} duration`);
+}
+assert.deepEqual(fighter('gatekeeper').specs.map(item=>item.label),['Portal interval','Crosscut window','Crosscut bonus damage','Collapse trigger'],'Gatekeeper blocks should contain quantified player-facing facts only');
 for(const id of ['corsair','dynamo','hourglass']){
   const shineColors:Record<string,string>={corsair:'#b6dfe7',dynamo:'#ffc6b5',hourglass:'#d8cfee'};
   assert.equal(fighter(id).shineColor,shineColors[id],`${id} should have a pale body-tinted shine independent of its effects`);
@@ -30,14 +48,21 @@ for(const id of ['corsair','dynamo','hourglass']){
   const phases:Record<string,string[]>={corsair:['CAST!','RECALL!','CRESCENT!','BACKSLASH!'],dynamo:['WIND UP!','DASH!','ROCKET PUNCH!'],hourglass:['BOOKMARK!','REWIND!']};
   for(const phase of phases[id])assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
 }
+for(const id of ['gatekeeper','conductor','matryoshka']){
+  assert.ok(fighter(id),`${id} should be addressable by the seeded roster`);
+  const seed=id==='matryoshka'?'mat-cycle-22':`epic-${id}`,first=simulateMatch(fighter(id),fighter('anchor'),seed);
+  assert.deepEqual(first,simulateMatch(fighter(id),fighter('anchor'),seed),`${id} must replay its full attack cycle deterministically`);
+  const phases:Record<string,string[]>={gatekeeper:['PORTAL!','LINKED!','WARP!','CROSSCUT!'],conductor:['PYLON!','OVERCHARGE!','ARC!','BURNOUT!'],matryoshka:['HAMMER BLOW!','SHELL BREAK!','TWIN SLASH!','CORE EXPOSED!','MELTDOWN!']};
+  for(const phase of phases[id])assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
+}
 const boxer=makeBall('dynamo','left'),boxerTarget=makeBall('brick','right');
 const dynamoInfo=fighter('dynamo');
 for(const term of ['Wind Up','Dash','Rocket Punch','Ground Burst','Recovery','Impact Guard'])assert.match(dynamoInfo.desc,new RegExp(term),`Dynamo should consistently explain ${term}`);
-assert.deepEqual(dynamoInfo.specs.map(item=>item.label),['Wind Up','Rocket Punch bonus','Ground Burst damage','Recovery','Impact Guard: body','Impact Guard: melee','Rocket Punch shield bypass','Vulnerabilities'],'Dynamo stats should follow the same named attack cycle as its description');
+assert.deepEqual(dynamoInfo.specs.map(item=>item.label),['Wind Up duration','Rocket Punch bonus damage','Rocket Punch shield penetration','Ground Burst damage','Recovery duration','Body Hit damage cap','Melee damage cap','Weapon vulnerability','Poison vulnerability'],'Dynamo stats should follow the same named attack cycle as its description');
 assert.equal(fighter('hourglass').accent,fighter('hourglass').color,'Hourglass effects should use its purple body color');
 const hourglassInfo=fighter('hourglass');
 for(const term of ['Bookmark','Rewind','Time Shard','Time Break'])assert.match(hourglassInfo.desc,new RegExp(term),`Hourglass should consistently explain ${term}`);
-assert.deepEqual(hourglassInfo.specs.map(item=>item.label),['Bookmark duration','Time Shards','Time Break damage','Time Break charge cap','Rewind recovery'],'Hourglass stats should follow the same named attack cycle as its description');
+assert.deepEqual(hourglassInfo.specs.map(item=>item.label),['Bookmark duration','Time Shard count','Time Break charge limit','Time Break damage','Rewind recovery'],'Hourglass stats should follow the same named attack cycle as its description');
 boxer.rocket={phase:'dash',frames:28,angle:0,hit:false};
 const punch={damage:2,force:5};runBehaviorHook(boxer,'modifyOutgoing',{rival:boxerTarget,event:punch});
 assert.ok(punch.damage>2,'Rocket Punch must add its committed hit bonus');
@@ -99,6 +124,12 @@ sim={balls:[shooter,target],projectiles:[timeShard(),{...timeShard(),y:120,previ
 const timeHits=stepProjectiles(sim,.1,bounds);
 assert.equal(timeHits.length,1,'a Time Break shard should use swept fighter collision');
 assert.equal(sim.projectiles.length,0,'the rest of a Time Break volley should dissipate after its first hit');
+const conductor=makeBall('conductor','left'),circuitTarget=makeBall('mint','right'),chargedShot=projectile();
+Object.assign(circuitTarget,{x:270,y:260,radius:10});Object.assign(chargedShot,{x:200,y:150,previousX:100,previousY:150,damage:10});
+conductor.circuitNodes=[{x:150,y:100,nx:1,ny:0,born:1},{x:150,y:200,nx:1,ny:0,born:2}];conductor.circuitVersion=1;
+runBehaviorHook(conductor,'tick',{rival:circuitTarget,sim:{balls:[conductor,circuitTarget],projectiles:[chargedShot],ticks:10} as never,event:{damage:0,force:0}});
+assert.equal(chargedShot.damage,12.5,'a projectile crossing a live Circuit Arc should gain 25% damage');
+assert.equal(chargedShot.electricCharge,true,'a projectile crossing a live Circuit Arc should become visibly electrified');
 
 sim={balls:[shooter,target],projectiles:[projectile()]};
 const obstacle:Hazard={id:'test',type:'pillar',x:145,y:100,r:10,value:0};
@@ -265,6 +296,7 @@ for(const cue of ['lanceCharge','lanceHit','grow','flail','magnetPull','magnetPu
 for(const cue of ['droneLaunch','droneHit'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['webShot','webSwing','webImpact','webPerch'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['mineDeploy','explosion','grenade','shrapnel'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
+for(const cue of ['portalOpen','portalTravel','portalCollapse','pylonPlace','arcZap','shellBreak','coreBurst'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 assert.ok(soundCues.coin.volume>=.7,'Goldie stacks should remain audible in the combat mix');
 assert.ok(soundCues.bodyContact.file,'ordinary fighter collisions need an audible foundation recording');
 assert.ok(soundCues.wallContact.file,'ordinary arena contacts need an audible foundation recording');

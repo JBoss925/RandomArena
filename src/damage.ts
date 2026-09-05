@@ -1,5 +1,7 @@
 import type {Ball,DamageType} from './types.js';
 
+export const BURN_DAMAGE_PER_SECOND_PER_STACK=.9;
+
 /**
  * Applies deterministic combat damage and, in visual simulations, records the
  * exact typed HP interval for the HUD. Headless balls omit the receipt array,
@@ -34,4 +36,9 @@ export function applyHealing(ball:Ball,amount:number):number{
 /** Half-second Poison tick. Every permanent stack contributes identical DPS. */
 export function poisonDamagePerTick(stacks:number,damageScale=1):number{
   return stacks>0?.62*stacks*damageScale:0;
+}
+
+/** One of five Burn ticks per second. */
+export function burnDamagePerTick(stacks:number):number{
+  return stacks>0?(BURN_DAMAGE_PER_SECOND_PER_STACK/5)*stacks:0;
 }

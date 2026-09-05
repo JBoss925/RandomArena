@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-05T23:04:26.448Z",
+  "seedsPerSide": 500,
+  "simulations": 1000,
+  "fighters": [
+    "polar",
+    "matryoshka"
+  ],
+  "results": {
+    "polar": {
+      "wins": 591,
+      "losses": 409,
+      "draws": 0,
+      "games": 1000,
+      "score": 0.591,
+      "winRate": 0.591,
+      "drawRate": 0,
+      "averageSeconds": 12.207216666666666,
+      "averageRemainingHp": 6.19691337611835,
+      "averageOpponentHp": 5.693995915285177,
+      "asLeft": {
+        "wins": 294,
+        "losses": 206,
+        "draws": 0,
+        "games": 500,
+        "score": 0.588,
+        "winRate": 0.588,
+        "drawRate": 0,
+        "averageSeconds": 12.2013,
+        "averageRemainingHp": 6.026567256648233,
+        "averageOpponentHp": 5.513010760147976
+      },
+      "asRight": {
+        "wins": 297,
+        "losses": 203,
+        "draws": 0,
+        "games": 500,
+        "score": 0.594,
+        "winRate": 0.594,
+        "drawRate": 0,
+        "averageSeconds": 12.213133333333333,
+        "averageRemainingHp": 6.3672594955885,
+        "averageOpponentHp": 5.874981070422386
+      }
+    },
+    "matryoshka": {
+      "wins": 409,
+      "losses": 591,
+      "draws": 0,
+      "games": 1000,
+      "score": 0.409,
+      "winRate": 0.409,
+      "drawRate": 0,
+      "averageSeconds": 12.207216666666666,
+      "averageRemainingHp": 5.693995915285177,
+      "averageOpponentHp": 6.19691337611835,
+      "asLeft": {
+        "wins": 203,
+        "losses": 297,
+        "draws": 0,
+        "games": 500,
+        "score": 0.406,
+        "winRate": 0.406,
+        "drawRate": 0,
+        "averageSeconds": 12.213133333333333,
+        "averageRemainingHp": 5.874981070422386,
+        "averageOpponentHp": 6.3672594955885
+      },
+      "asRight": {
+        "wins": 206,
+        "losses": 294,
+        "draws": 0,
+        "games": 500,
+        "score": 0.412,
+        "winRate": 0.412,
+        "drawRate": 0,
+        "averageSeconds": 12.2013,
+        "averageRemainingHp": 5.513010760147976,
+        "averageOpponentHp": 6.026567256648233
+      }
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { applyDamage } from "./damage.js";
+import { epicBehaviors } from "./epic-behaviors.js";
 import type { Behavior, BehaviorContext, CombatEvent, Point } from "./types.js";
 
 type Dispatch = (
@@ -79,6 +80,7 @@ export function advancedBehaviors(
     c.ctx.restore();
   };
   return {
+    ...epicBehaviors(dispatch),
     crescentRaider: {
       tick(c) {
         const { ball, rival, sim } = c;
@@ -412,11 +414,34 @@ export function advancedBehaviors(
         }
         ball.vx = -a.vx;
         ball.vy = -a.vy;
-        const volleyId=`time-${ball.side}-${sim.ticks}`;
-        const shardSpeed=960,offset=(sim.ticks*.173+(ball.side==='left'?0:Math.PI/12))%(Math.PI*2);
-        for(let index=0;index<12;index++){
-          const angle=offset+index*Math.PI/6;
-          sim.projectiles.push({shooter:ball,side:ball.side,x:abandoned.x,y:abandoned.y,previousX:abandoned.x,previousY:abandoned.y,vx:Math.cos(angle)*shardSpeed,vy:Math.sin(angle)*shardSpeed,radius:9,damage:(3+Math.min(5.5,a.damage*.1))*ball.f.power,force:7,life:22,color:ball.f.color,type:'timeShard',dead:false,armingFrames:2,rotation:angle,spin:7,volleyId});
+        const volleyId = `time-${ball.side}-${sim.ticks}`;
+        const shardSpeed = 960,
+          offset =
+            (sim.ticks * 0.173 + (ball.side === "left" ? 0 : Math.PI / 12)) %
+            (Math.PI * 2);
+        for (let index = 0; index < 12; index++) {
+          const angle = offset + (index * Math.PI) / 6;
+          sim.projectiles.push({
+            shooter: ball,
+            side: ball.side,
+            x: abandoned.x,
+            y: abandoned.y,
+            previousX: abandoned.x,
+            previousY: abandoned.y,
+            vx: Math.cos(angle) * shardSpeed,
+            vy: Math.sin(angle) * shardSpeed,
+            radius: 9,
+            damage: (3 + Math.min(5.5, a.damage * 0.1)) * ball.f.power,
+            force: 7,
+            life: 22,
+            color: ball.f.color,
+            type: "timeShard",
+            dead: false,
+            armingFrames: 2,
+            rotation: angle,
+            spin: 7,
+            volleyId,
+          });
         }
         c.showImpact("REWIND!", ball);
         c.emitParticles(abandoned, {

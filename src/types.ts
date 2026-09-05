@@ -5,7 +5,7 @@ export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy
 export type DamageType = 'physical'|'burn'|'poison'|'ice'|'electric'|'explosive'|'echo'|'time'|'hazard'|'fatigue';
 export type HealthDamageReceipt = { sequence:number; from:number; to:number; amount:number; type:DamageType };
 export type HealthHealingReceipt = { sequence:number; from:number; to:number; amount:number };
-export type SoundCue = 'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -72,6 +72,8 @@ export type HazardType = 'pillar' | 'spikes' | 'medbay' | 'pinball';
 export type Hazard = Point & { id: string; type: HazardType; r: number; value: number };
 
 export type WallCrash = { frames: number; damage: number };
+export type Portal = Point&{nx:number;ny:number;color:string;wall:number};
+export type CircuitNode = Point&{nx:number;ny:number;born:number};
 
 export type Ball = Point & {
   f: Fighter;
@@ -111,6 +113,21 @@ export type Ball = Point & {
   rocketCooldown?: number;
   timeAnchor?: {x:number;y:number;vx:number;vy:number;frames:number;damage:number};
   timeCooldown?: number;
+  portals?: Portal[];
+  portalPlacementCooldown?: number;
+  portalNextIndex?: number;
+  portalTransfers?: number;
+  portalCooldown?: number;
+  portalStrikeFrames?: number;
+  circuitNodes?: CircuitNode[];
+  circuitVersion?: number;
+  circuitOvercharge?: number;
+  circuitCooldowns?: Record<string,number>;
+  nestPhase?: 1|2|3;
+  nestBaseRadius?: number;
+  nestWeaponCooldown?: number;
+  coreCountdown?: number;
+  formColor?: string;
   voltCharge?: number;
   armorPlates?: number;
   armorRepair?: number;
@@ -170,6 +187,7 @@ export type CombatEvent = {
   armorDamage?: number;
   shieldPenetration?: number;
   rocketGuard?: boolean;
+  portalStrike?: boolean;
   healingScale?: number;
   voltRelease?: number;
   bubblePop?: boolean;
@@ -190,7 +208,7 @@ export type CombatEvent = {
 };
 
 export type Echo = { attacker: Ball; victim: Ball; frames: number; damage: number };
-export type ProjectileType = RangedWeapon['type']|'heatseeker'|'grenade'|'shrapnel'|'timeShard';
+export type ProjectileType = RangedWeapon['type']|'heatseeker'|'grenade'|'shrapnel'|'timeShard'|'shellShard';
 export type Projectile = Point & {
   shooter: Ball;
   side: Side;
@@ -212,6 +230,10 @@ export type Projectile = Point & {
   rotation?: number;
   spin?: number;
   volleyId?: string;
+  portalCooldown?: number;
+  chargedNetworks?: string[];
+  electricCharge?: boolean;
+  coreBurst?: boolean;
 };
 
 export type Mine = Point & {

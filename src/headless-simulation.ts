@@ -6,7 +6,7 @@ import { createInitialBall } from './initial-conditions.js';
 import { contactForce, impactSpeedScale } from './combat-config.js';
 import { resolveOutcome } from './outcome.js';
 import {explodeGrenade,stepMines} from './explosives.js';
-import {applyDamage,poisonDamagePerTick} from './damage.js';
+import {applyDamage,burnDamagePerTick,poisonDamagePerTick} from './damage.js';
 import type { Ball, CombatEvent, Fighter, MineHit, Outcome, ProjectileHit, Simulation, WeaponHit, Winner } from './types';
 
 const W=720,H=720,DT=1/60,BOUNDS={left:28,right:W-28,top:80,bottom:H-28};
@@ -24,7 +24,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
     sim.echoes=sim.echoes.filter(e=>e.frames>0);
     for(const ball of sim.balls){
       ball.cooldown=Math.max(0,ball.cooldown-1);ball.weaponCooldown=Math.max(0,ball.weaponCooldown-1);ball.weaponWorldCooldown=Math.max(0,ball.weaponWorldCooldown-1);ball.fireCooldown=Math.max(0,ball.fireCooldown-1);ball.stunned=Math.max(0,ball.stunned-1);ball.flash=Math.max(0,ball.flash-1);
-      if(ball.burn>0){ball.burn--;if(ball.burn%12===0)applyDamage(ball,.18*(ball.burnStacks||1),'burn');if(!ball.burn)ball.burnStacks=0;}
+      if(ball.burn>0){ball.burn--;if(ball.burn%12===0)applyDamage(ball,burnDamagePerTick(ball.burnStacks||1),'burn');if(!ball.burn)ball.burnStacks=0;}
       if(ball.poisonStacks>0){ball.poisonTick=(ball.poisonTick+1)%30;if(ball.poisonTick===0)applyDamage(ball,poisonDamagePerTick(ball.poisonStacks,ball.f.poisonDamageScale),'poison');}
       if(ball.wallCrash&&ball.wallCrash.frames>0)ball.wallCrash.frames--;
       const rival=sim.balls.find(other=>other!==ball)!,context=ctx(sim,rival,{dt:DT,force:0,damage:0});
@@ -68,7 +68,7 @@ function resolveProjectileHits(hits:ProjectileHit[],sim:Simulation):void{
   if(!hits.length)return;
   for(const hit of hits.filter(hit=>hit.projectile.type==='grenade')){explodeGrenade(hit.projectile,sim);sim.events['BOOM!']=(sim.events['BOOM!']??0)+1;}
   const damaging=hits.filter((hit):hit is ProjectileHit&{target:Ball}=>hit.projectile.type!=='grenade'&&Boolean(hit.target));
-  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',timeShard=hit.projectile.type==='timeShard',interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel||timeShard,explosive:shrapnel,damageType:shrapnel?'explosive' as const:timeShard?'time' as const:'physical' as const};}),sim,'projectile volley');
+  if(damaging.length)resolveCombatEvents(damaging.map(hit=>{const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',timeShard=hit.projectile.type==='timeShard',shellShard=hit.projectile.type==='shellShard',charged=Boolean(hit.projectile.electricCharge),interceptScale=seeker?1+Math.min(1.5,Math.hypot(hit.target.vx,hit.target.vy)/550):1;return{attacker:hit.projectile.shooter,victim:hit.target,force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel||timeShard||shellShard||charged,explosive:shrapnel||shellShard,damageType:charged?'electric' as const:shrapnel||shellShard?'explosive' as const:timeShard?'time' as const:'physical' as const};}),sim,'projectile volley');
 }
 
 function resolveMineHits(hits:MineHit[],sim:Simulation):void{

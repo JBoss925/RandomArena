@@ -18,6 +18,13 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  portalOpen:{file:'/audio/teleport.mp3',volume:.32,rate:1.1,cooldownMs:170},
+  portalTravel:{file:'/audio/teleport.mp3',volume:.38,rate:1.45,cooldownMs:90},
+  portalCollapse:{file:'/audio/laser-fire.mp3',volume:.4,rate:.62,cooldownMs:220},
+  pylonPlace:{file:'/audio/mechanical-clank.mp3',volume:.3,rate:1.35,cooldownMs:110},
+  arcZap:{file:'/audio/laser-fire.mp3',volume:.3,rate:1.8,variance:.08,cooldownMs:85},
+  shellBreak:{file:'/audio/mechanical-clank.mp3',volume:.45,rate:.7,cooldownMs:180},
+  coreBurst:{file:'/audio/shotgun-fire.mp3',volume:.5,rate:.72,cooldownMs:250},
   crescentCast:{file:'/audio/lance-whoosh.mp3',volume:.35,rate:1.3,cooldownMs:100},
   crescentRecall:{volume:.2,rate:1,synth:'whoosh',cooldownMs:150},
   crescentHit:{file:'/audio/metal-tap.ogg',volume:.4,rate:.9,cooldownMs:90},

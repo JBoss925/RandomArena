@@ -1,6 +1,9 @@
 const wrap = (body:string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#151515" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 export const fighterIcons:Record<string,string> = {
+  gatekeeper: wrap('<ellipse fill="#fff" cx="19" cy="32" rx="11" ry="24"/><ellipse fill="#fff" cx="47" cy="32" rx="9" ry="19"/><path d="m26 20 9 7-9 7m12 10-9-7 9-7"/>'),
+  conductor: wrap('<circle fill="#fff" cx="13" cy="48" r="7"/><circle fill="#fff" cx="51" cy="48" r="7"/><circle fill="#fff" cx="32" cy="13" r="7"/><path d="M17 42 28 19m8 0 11 23M20 48h24M32 25l-6 11h9l-5 12"/>'),
+  matryoshka: wrap('<path fill="#fff" d="M21 25c-9 8-12 27-8 32h38c4-5 1-24-8-32 2-13-3-20-11-20s-13 7-11 20Z"/><circle cx="32" cy="19" r="7"/><path d="M21 38c7 5 15 5 22 0M26 18h1m10 0h1M28 25c3 2 5 2 8 0"/>'),
   corsair: wrap('<path fill="#fff" d="M9 28 20 12l12 8 12-8 11 16-8 8H17Z"/><path d="M18 43h28M25 43v10m14-10v10"/>'),
   dynamo: wrap('<path fill="#fff" d="M12 27V15h10v-5h11v5h11v6h9v23L39 55H20l-8-13Z"/><path d="M22 16v16m11-16v16m11-10v15M12 33h20l6 10"/>'),
   hourglass: wrap('<path fill="#fff" d="M15 8h34v8L37 32l12 16v8H15v-8l12-16-12-16Z"/><path d="M15 8h34M15 56h34M24 20h16M24 48l8-10 8 10Z"/>'),

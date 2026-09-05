@@ -13,7 +13,7 @@ import { resolveOutcome } from './outcome.js';
 import { SOUND_OUTPUT_GAIN, playSound as playLibrarySound, preloadSounds } from './sounds.js';
 import { contactFeedback, hazardMaterial, type ContactFeedback } from './materials.js';
 import {contrastForeground} from './color-contrast.js';
-import {applyDamage,applyHealing,poisonDamagePerTick} from './damage.js';
+import {applyDamage,applyHealing,burnDamagePerTick,poisonDamagePerTick} from './damage.js';
 import {layoutHealthBar} from './health-bar.js';
 import type { BalanceMatch, BalanceRanking, BalanceReport, Ball, Bout, CombatEvent, DamageType, Fighter, Hazard, HazardType, HealthDamageReceipt, HealthHealingReceipt, Material, Mine, MineHit, Outcome, Particle, ParticleOptions, Point, Projectile, ProjectileHit, Side, Simulation, SoundCue, SoundCueOptions, WeaponHit, Winner } from './types';
 
@@ -221,7 +221,7 @@ function update(dt:number):void {
     b.cooldown = Math.max(0,b.cooldown-1); b.weaponCooldown=Math.max(0,b.weaponCooldown-1);b.weaponWorldCooldown=Math.max(0,b.weaponWorldCooldown-1);b.fireCooldown=Math.max(0,b.fireCooldown-1); b.stunned = Math.max(0,b.stunned-1); b.flash = Math.max(0,b.flash-1);
     for(const name of Object.keys(b.visualStates)){b.visualStates[name]--;if(b.visualStates[name]<=0)delete b.visualStates[name];}
     for(const id of Object.keys(b.hazardCooldowns))b.hazardCooldowns[id]=Math.max(0,b.hazardCooldowns[id]-1);
-    if (b.burn > 0) { b.burn--; if (b.burn % 12 === 0) applyDamage(b,.18*(b.burnStacks||1),'burn');if(!b.burn)b.burnStacks=0; }
+    if (b.burn > 0) { b.burn--; if (b.burn % 12 === 0) applyDamage(b,burnDamagePerTick(b.burnStacks||1),'burn');if(!b.burn)b.burnStacks=0; }
     if(b.poisonStacks>0){b.poisonTick=(b.poisonTick+1)%30;if(b.poisonTick===0){applyDamage(b,poisonDamagePerTick(b.poisonStacks,b.f.poisonDamageScale),'poison');b.visualStates.poisoned=24;emitParticles(b,{count:2+Math.min(6,b.poisonStacks),color:'#245c2a',speed:90,gravity:-45,kind:'poison',size:6});if(s.ticks%60===0)playSound('poison',{volume:.32,rate:1.15});}}
     if(b.wallCrash&&b.wallCrash.frames>0)b.wallCrash.frames--;
     const rival=s.balls.find(other=>other!==b)!;
@@ -295,8 +295,8 @@ function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   const before={left:s.balls[0].hp,right:s.balls[1].hp};
   const prepared=damaging.map(hit=>{
     const attacker=hit.projectile.shooter,victim=hit.target;attacker.hits++;victim.incoming++;
-    const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',timeShard=hit.projectile.type==='timeShard',interceptScale=seeker?1+Math.min(1.5,Math.hypot(victim.vx,victim.vy)/550):1;
-    const event:CombatEvent={force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel||timeShard,explosive:shrapnel,damageType:shrapnel?'explosive':timeShard?'time':'physical'};
+    const seeker=hit.projectile.type==='heatseeker',shrapnel=hit.projectile.type==='shrapnel',timeShard=hit.projectile.type==='timeShard',shellShard=hit.projectile.type==='shellShard',charged=Boolean(hit.projectile.electricCharge),interceptScale=seeker?1+Math.min(1.5,Math.hypot(victim.vx,victim.vy)/550):1;
+    const event:CombatEvent={force:hit.projectile.force,damage:hit.projectile.damage*interceptScale,weapon:true,projectile:true,ability:seeker||shrapnel||timeShard||shellShard||charged,explosive:shrapnel||shellShard,damageType:charged?'electric':shrapnel||shellShard?'explosive':timeShard?'time':'physical'};
     const context={sim:s,rival:victim,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
     runBehaviorHook(attacker,'modifyOutgoing',context);runBehaviorHook(victim,'modifyIncoming',{...context,rival:attacker});
     return{...hit,attacker,victim,event,context};
@@ -304,10 +304,12 @@ function resolveProjectileHits(hits:ProjectileHit[],s:Simulation):void{
   for(const hit of prepared)applyDamage(hit.victim,hit.event.damage,hit.event.damageType);
   for(const hit of prepared){
     hit.victim.flash=8;runBehaviorHook(hit.attacker,'dealHit',hit.context);runBehaviorHook(hit.victim,'takeHit',{...hit.context,rival:hit.attacker});
-    impact(hit.projectile.type==='sniper'?'HEADSHOT!':hit.projectile.type==='heatseeker'?'SEEKER HIT!':hit.projectile.type==='shrapnel'?'SHRAPNEL!':hit.projectile.type==='timeShard'?'TIME BREAK!':'PELLET!',{x:hit.x,y:hit.y});
+    impact(hit.projectile.electricCharge?'CHARGED HIT!':hit.projectile.type==='sniper'?'HEADSHOT!':hit.projectile.type==='heatseeker'?'SEEKER HIT!':hit.projectile.type==='shrapnel'?'SHRAPNEL!':hit.projectile.type==='timeShard'?'TIME BREAK!':hit.projectile.type==='shellShard'?(hit.projectile.coreBurst?'CORE SHARD!':'SHELL SHARD!'):'PELLET!',{x:hit.x,y:hit.y});
     if(hit.projectile.type==='heatseeker')playSound('droneHit');
     else if(hit.projectile.type==='shrapnel')playSound('shrapnel');
     else if(hit.projectile.type==='timeShard')playSound('timeRewind',{volume:.7,rate:1.25});
+    else if(hit.projectile.type==='shellShard')playSound(hit.projectile.coreBurst?'coreBurst':'shellBreak',{volume:.55,rate:1.3});
+    else if(hit.projectile.electricCharge)playSound('arcZap');
     materialContact({x:hit.x,y:hit.y},'metal',hit.victim.f.material,hit.event.force,{balls:[hit.victim],volume:hit.projectile.type==='sniper'?1.25:.8});
     emitParticles({x:hit.x,y:hit.y},{count:hit.projectile.type==='sniper'?12:hit.projectile.type==='heatseeker'?16:hit.projectile.type==='timeShard'?18:4,color:hit.projectile.color,speed:hit.projectile.type==='sniper'?470:hit.projectile.type==='heatseeker'?410:hit.projectile.type==='timeShard'?390:330,gravity:hit.projectile.type==='timeShard'?0:180,kind:hit.projectile.type==='heatseeker'?'star':hit.projectile.type==='sniper'?'star':hit.projectile.type==='timeShard'?'pixel':'spark',size:hit.projectile.type==='sniper'?9:hit.projectile.type==='heatseeker'?8:6});
   }
@@ -470,6 +472,7 @@ function drawProjectiles(projectiles:Projectile[]):void{
     if(p.type==='grenade'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#151515';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,p.radius,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-p.radius,0);ctx.lineTo(p.radius,0);ctx.stroke();ctx.fillStyle='#151515';ctx.fillRect(-3,-p.radius-6,6,7);ctx.restore();continue;}
     if(p.type==='shrapnel'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#151515';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.radius*1.8,0);ctx.lineTo(-p.radius,-p.radius);ctx.lineTo(-p.radius,p.radius);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();continue;}
     if(p.type==='timeShard'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#eee9ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.radius*1.8,0);ctx.lineTo(0,p.radius);ctx.lineTo(-p.radius*1.8,0);ctx.lineTo(0,-p.radius);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();continue;}
+    if(p.type==='shellShard'){ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle='#151515';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.radius*2,0);ctx.lineTo(-p.radius,-p.radius);ctx.lineTo(-p.radius*.35,p.radius*1.3);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();continue;}
     ctx.strokeStyle=p.color;ctx.fillStyle=p.type==='sniper'?'#f3efdf':p.color;ctx.lineWidth=p.type==='sniper'?5:3;ctx.beginPath();ctx.moveTo(p.previousX,p.previousY);ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.arc(p.x,p.y,p.radius,0,Math.PI*2);ctx.fill();ctx.restore();
   }
 }
@@ -520,8 +523,8 @@ function drawBall(b:Ball):void {
   ctx.save();ctx.translate(b.x,b.y);ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(7,b.radius*.82,b.radius*.9,b.radius*.28,0,0,Math.PI*2);ctx.fill();ctx.restore();
   ctx.save();ctx.translate(b.x,b.y);if((b.visualStates.squash??0)>0){const wobble=Math.sin((b.visualStates.squash??0)*1.7)*.055;ctx.scale(1+wobble,1-wobble);}if(b.flash)ctx.globalAlpha=b.flash%2?.35:1;
   ctx.strokeStyle='#151515';ctx.lineWidth=7;ctx.beginPath();ctx.arc(0,0,b.radius,0,Math.PI*2);
-  if(b.f.secondaryColor){ctx.save();ctx.clip();ctx.fillStyle=b.f.color;ctx.fillRect(-b.radius,-b.radius,b.radius,b.radius*2);ctx.fillStyle=b.f.secondaryColor;ctx.fillRect(0,-b.radius,b.radius,b.radius*2);ctx.restore();ctx.stroke();}
-  else{ctx.fillStyle=b.f.color;ctx.fill();ctx.stroke();}
+  if(b.f.secondaryColor){ctx.save();ctx.clip();ctx.fillStyle=b.formColor??b.f.color;ctx.fillRect(-b.radius,-b.radius,b.radius,b.radius*2);ctx.fillStyle=b.f.secondaryColor;ctx.fillRect(0,-b.radius,b.radius,b.radius*2);ctx.restore();ctx.stroke();}
+  else{ctx.fillStyle=b.formColor??b.f.color;ctx.fill();ctx.stroke();}
   ctx.fillStyle=b.f.shineColor??b.f.accent;ctx.beginPath();ctx.arc(-b.radius*.28,-b.radius*.3,b.radius*.22,0,Math.PI*2);ctx.fill();
   drawBallStateTexture(b);
   ctx.restore();
