@@ -75,6 +75,12 @@ function loadSound(file:string):Promise<HTMLAudioElement|undefined>{
 function playSynth(kind:SynthSound,volume:number,random:RandomSource):void{
   synthContext??=new AudioContext();
   const context=synthContext,now=context.currentTime;
+  if(kind==='musicTap'||kind==='musicRise'||kind==='musicBass'){
+    const notes=kind==='musicTap'?[523.25]:kind==='musicRise'?[523.25,659.25,783.99]:[130.81,65.41],duration=kind==='musicBass'?.42:kind==='musicRise'?.3:.13,master=context.createGain();
+    master.gain.setValueAtTime(Math.min(kind==='musicBass'?.16:.11,volume),now);master.gain.exponentialRampToValueAtTime(.0001,now+duration);master.connect(context.destination);
+    for(const [index,note] of notes.entries()){const oscillator=context.createOscillator(),gain=context.createGain(),start=now+(kind==='musicRise'?index*.065:0);oscillator.type=kind==='musicBass'?'sawtooth':index%2?'triangle':'sine';oscillator.frequency.setValueAtTime(note,start);if(kind==='musicBass')oscillator.frequency.exponentialRampToValueAtTime(note*.62,start+duration);gain.gain.setValueAtTime(kind==='musicBass'?.46:.72/(index+1),start);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);oscillator.connect(gain).connect(master);oscillator.start(start);oscillator.stop(start+duration);}
+    return;
+  }
   if(kind==='ascend'){
     const duration=1.15,master=context.createGain();master.gain.setValueAtTime(.0001,now);master.gain.exponentialRampToValueAtTime(Math.min(.13,volume),now+.09);master.gain.setValueAtTime(Math.min(.13,volume),now+.72);master.gain.exponentialRampToValueAtTime(.0001,now+duration);master.connect(context.destination);
     for(const [index,start] of [82,164,246].entries()){const oscillator=context.createOscillator(),gain=context.createGain();oscillator.type=index===1?'triangle':'sine';oscillator.frequency.setValueAtTime(start,now);oscillator.frequency.exponentialRampToValueAtTime(start*(index+2.4),now+.82);gain.gain.setValueAtTime(.5/(index+1),now);gain.gain.exponentialRampToValueAtTime(.08,now+duration);oscillator.connect(gain).connect(master);oscillator.start(now);oscillator.stop(now+duration);}

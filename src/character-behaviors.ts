@@ -3,13 +3,19 @@ import type {Ball,Behavior,BehaviorContext,CombatEvent,Point} from './types.js';
 
 const pulse=(ball:BehaviorContext['ball'],name:string,frames:number):void=>{ball.visualStates[name]=Math.max(ball.visualStates[name]??0,frames);};
 type Dispatch=(ball:Ball,hook:'modifyIncoming'|'takeHit',context:Partial<BehaviorContext>)=>void;
-export const characterTuning={palmDamage:35,clinchDamage:18,laserDamage:10,phaseCutDamage:30,retaliationDamage:8};
+export const characterTuning={palmDamage:35,clinchDamage:18,laserDamage:10,phaseCutDamage:30,retaliationDamage:8,maestroDamage:[1.65,4.9,15.75],fateDamage:20};
 
 function rayLength(origin:Point,angle:number,width:number,height:number):number{
   const dx=Math.cos(angle),dy=Math.sin(angle),distances:number[]=[];
   if(dx>0)distances.push((width-28-origin.x)/dx);else if(dx<0)distances.push((28-origin.x)/dx);
   if(dy>0)distances.push((height-28-origin.y)/dy);else if(dy<0)distances.push((80-origin.y)/dy);
   return Math.min(...distances.filter(distance=>distance>0));
+}
+
+function reflectedPosition(position:number,velocity:number,seconds:number,min:number,max:number):number{
+  let result=position+velocity*seconds;
+  while(result<min||result>max){if(result<min)result=min+(min-result);if(result>max)result=max-(result-max);}
+  return result;
 }
 
 function abilityStrike(c:BehaviorContext,dispatch:Dispatch,damage:number,label:string,point:Point,type:CombatEvent['damageType']='physical',eventExtras:Partial<CombatEvent>={}):void{
@@ -218,6 +224,46 @@ export function characterBehaviors(dispatch:Dispatch):Record<string,Behavior>{
       drawFront({ball,ctx}){
         if((ball.enforcerCooldown??0)>0)return;const angle=ball.enforcerAngle??0,r=ball.radius+31,x=ball.x+Math.cos(angle)*r,y=ball.y+Math.sin(angle)*r;ctx.save();ctx.translate(x,y);ctx.fillStyle='#242128';ctx.strokeStyle='#151515';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=ball.f.accent;ctx.fillRect(-7,-2,14,4);ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(-4,10);ctx.lineTo(4,10);ctx.closePath();ctx.fill();ctx.restore();
       },
+    },
+    threeBeat:{
+      modifyOutgoing({ball,event}){
+        if(event.weapon||event.projectile||event.ability)return;const beat=((ball.maestroBeat??0)%3)+1;ball.maestroBeat=beat;event.damage+=characterTuning.maestroDamage[beat-1]*ball.f.power;event.ability=beat===3;event.maestroBeat=beat;
+      },
+      dealHit(c){
+        const beat=c.event.maestroBeat;if(!beat)return;const labels=['TAP!','CRESCENDO!','BASS DROP!'],colors=['#006f71','#7b5d00','#a51f48'];pulse(c.ball,'maestroBeat',18+beat*4);pulse(c.rival,'maestroHit',12+beat*4);c.showImpact(labels[beat-1],c.rival);
+        c.emitParticles(c.rival,{count:5+beat*3,color:colors[beat-1],speed:170+beat*85,gravity:beat===3?40:150,kind:'note',size:7+beat});
+        c.emitParticles(c.rival,{count:3+beat*2,color:beat===2?'#006f71':'#7b5d00',speed:140+beat*70,gravity:100,kind:'rest',size:7+beat});
+        if(beat>1)c.emitParticles(c.rival,{count:beat===3?10:5,color:'#493c2a',speed:190+beat*60,gravity:80,kind:'staff',size:9+beat});
+        c.playSound(beat===1?'maestroTap':beat===2?'maestroCrescendo':'bassDrop');
+        if(beat===2){const speed=Math.hypot(c.ball.vx,c.ball.vy)||1,boost=Math.max(720,speed*1.18);c.ball.vx=c.ball.vx/speed*boost;c.ball.vy=c.ball.vy/speed*boost;pulse(c.ball,'crescendo',42);c.emitParticles(c.ball,{count:14,color:'#7b5d00',speed:210,gravity:80,kind:'note',size:9});}
+        if(beat===3){const dx=c.rival.x-c.ball.x,dy=c.rival.y-c.ball.y,d=Math.hypot(dx,dy)||1,speed=Math.max(900,Math.hypot(c.rival.vx,c.rival.vy)*1.12);c.rival.vx=dx/d*speed;c.rival.vy=dy/d*speed;c.rival.stunned=Math.max(c.rival.stunned,8);c.ball.vx*=.82;c.ball.vy*=.82;c.ball.maestroBeat=0;c.sim.hitStop=Math.max(c.sim.hitStop,6);pulse(c.ball,'bassDrop',36);}
+      },
+      drawBack({ball,ctx,sim}){const drop=ball.visualStates.bassDrop??0;if(!drop)return;const progress=1-drop/36;ctx.save();ctx.strokeStyle='#493c2a';ctx.globalAlpha=1-progress;for(let i=0;i<3;i++){ctx.lineWidth=7-i;ctx.beginPath();ctx.arc(ball.x,ball.y,ball.radius+15+progress*120+i*18,0,Math.PI*2);ctx.stroke();}for(let row=-2;row<=2;row++){ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ball.x-105,ball.y+row*9);ctx.lineTo(ball.x+105,ball.y+row*9);ctx.stroke();}ctx.restore();},
+      drawFront({ball,ctx,sim}){const beat=ball.maestroBeat??0;if(!beat)return;ctx.save();ctx.font='bold 22px serif';ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<beat;i++){const angle=-Math.PI/2+i*Math.PI*.55-Math.PI*.27*(beat-1),r=ball.radius+18+Math.sin(sim.ticks*.16+i)*3;ctx.fillStyle=i===2?'#a51f48':i===1?'#7b5d00':'#006f71';ctx.strokeStyle='#151515';ctx.lineWidth=4;ctx.strokeText(i%2?'♫':'♪',ball.x+Math.cos(angle)*r,ball.y+Math.sin(angle)*r);ctx.fillText(i%2?'♫':'♪',ball.x+Math.cos(angle)*r,ball.y+Math.sin(angle)*r);}ctx.restore();},
+    },
+    futureSight:{
+      tick(c){
+        const {ball,rival,random}=c,vision=ball.oracleVision;
+        if(vision){
+          vision.frames--;if(vision.frames>0)return;const distance=Math.hypot(rival.x-vision.x,rival.y-vision.y);if(distance<=rival.radius+80){abilityStrike(c,dispatch,characterTuning.fateDamage,'FATE STRIKE!',vision,'time',{shieldPenetration:.25});pulse(rival,'fateStrike',28);c.emitParticles(vision,{count:30,color:ball.f.accent,speed:380,gravity:0,kind:'star',size:10});c.playSound('fateStrike');}else{c.showImpact('FATE EVADED!',vision);c.emitParticles(vision,{count:14,color:ball.f.accent,speed:130,gravity:0,kind:'ring',size:8});c.playSound('fateEvaded');}ball.oracleVision=undefined;ball.oracleCooldown=150;return;
+        }
+        if(ball.frozen||ball.stunned)return;ball.oracleCooldown??=65+Math.floor(random()*56);if(--ball.oracleCooldown>0)return;
+        const seconds=72/60,x=reflectedPosition(rival.x,rival.vx,seconds,28+rival.radius,c.sim.width-28-rival.radius),y=reflectedPosition(rival.y,rival.vy,seconds,80+rival.radius,c.sim.height-28-rival.radius);ball.oracleVision={x,y,frames:72};c.showImpact('VISION!',ball.oracleVision);c.emitParticles(ball.oracleVision,{count:18,color:ball.f.accent,speed:130,gravity:0,kind:'star',size:8});c.playSound('oracleVision');
+      },
+      drawFloor({ball,ctx}){const vision=ball.oracleVision;if(!vision)return;const progress=vision.frames/72,radius=80;ctx.save();ctx.translate(vision.x,vision.y);ctx.strokeStyle=ball.f.accent;ctx.fillStyle='rgba(113, 79, 190, .12)';ctx.lineWidth=4;ctx.globalAlpha=.45+.35*(1-progress);ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(0,0,radius,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.setLineDash([]);ctx.rotate(-progress*Math.PI*2);ctx.beginPath();ctx.arc(0,0,18+progress*32,-.8,.8);ctx.stroke();ctx.rotate(Math.PI);ctx.beginPath();ctx.arc(0,0,18+progress*32,-.8,.8);ctx.stroke();ctx.beginPath();ctx.moveTo(-13,0);ctx.quadraticCurveTo(0,-12,13,0);ctx.quadraticCurveTo(0,12,-13,0);ctx.stroke();ctx.fillStyle=ball.f.accent;ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.fill();ctx.restore();},
+    },
+    severedStrings:{
+      tick(c){
+        const {ball}=c;ball.puppetStrings??=4;ball.stringSnapCooldown=Math.max(0,(ball.stringSnapCooldown??0)-1);if((ball.unboundFrames??0)<=0)return;ball.unboundFrames!--;pulse(ball,'unbound',3);if(!ball.unboundFrames){ball.puppetStrings=4;const speed=ball.puppetBoundSpeed??650,current=Math.hypot(ball.vx,ball.vy)||1;ball.vx=ball.vx/current*speed;ball.vy=ball.vy/current*speed;c.showImpact('RESTRUNG!',ball);c.emitParticles(ball,{count:20,color:ball.f.accent,speed:170,gravity:-40,kind:'thread',size:8});c.playSound('restring');}
+      },
+      wallHit(c){
+        const {ball}=c;if((ball.unboundFrames??0)>0||(ball.stringSnapCooldown??0)>0)return;ball.puppetStrings??=4;ball.puppetStrings=Math.max(0,ball.puppetStrings-1);ball.stringSnapCooldown=6;const speed=Math.hypot(ball.vx,ball.vy),angle=Math.atan2(ball.vy,ball.vx)+(ball.puppetStrings%2?1:-1)*.24;ball.vx=Math.cos(angle)*speed;ball.vy=Math.sin(angle)*speed;c.showImpact('STRING SNAP!',ball);c.emitParticles(ball,{count:12,color:ball.f.accent,speed:190,gravity:80,kind:'thread',size:8});c.playSound('stringSnap',{rate:1+(3-ball.puppetStrings)*.08});
+        if(!ball.puppetStrings){ball.unboundFrames=128;ball.puppetBoundSpeed=speed;const wild=Math.max(920,speed*1.28);ball.vx=ball.vx/(speed||1)*wild;ball.vy=ball.vy/(speed||1)*wild;pulse(ball,'unbound',128);c.showImpact('UNBOUND!',ball);c.emitParticles(ball,{count:36,color:ball.f.accent,speed:410,gravity:80,kind:'thread',size:11,pattern:'spiral',spawnRadius:ball.radius+15});c.playSound('unbound');}
+      },
+      modifyOutgoing({ball,event}){if((ball.unboundFrames??0)>0){event.damage*=1.7;event.ability=true;event.unboundStrike=true;}},
+      dealHit(c){if(!c.event.unboundStrike)return;pulse(c.rival,'unboundHit',18);c.showImpact('WILD STRIKE!',c.rival);c.emitParticles(c.rival,{count:18,color:c.ball.f.accent,speed:360,gravity:100,kind:'thread',size:9});c.playSound('unbound',{rate:1.35,volume:.6});},
+      drawBack({ball,ctx,sim}){if((ball.unboundFrames??0)>0)return;const count=ball.puppetStrings??4,endpoints=[{x:sim.width*.2,y:80},{x:sim.width*.8,y:80},{x:28,y:sim.height*.72},{x:sim.width-28,y:sim.height*.72}];ctx.save();ctx.strokeStyle=ball.f.accent;ctx.lineWidth=3;ctx.globalAlpha=.48;for(let i=0;i<count;i++){const end=endpoints[i];ctx.beginPath();ctx.moveTo(ball.x+(i%2?1:-1)*ball.radius*.35,ball.y-ball.radius*.2);ctx.quadraticCurveTo((ball.x+end.x)/2+(i%2?18:-18),(ball.y+end.y)/2,end.x,end.y);ctx.stroke();}ctx.restore();},
+      drawFront({ball,ctx,sim}){if((ball.unboundFrames??0)<=0)return;ctx.save();ctx.translate(ball.x,ball.y);ctx.rotate(sim.ticks*.07);ctx.strokeStyle=ball.f.accent;ctx.lineWidth=5;ctx.globalAlpha=.72;for(let i=0;i<8;i++){ctx.rotate(Math.PI/4);ctx.beginPath();ctx.moveTo(ball.radius+8,0);ctx.bezierCurveTo(ball.radius+22,-12,ball.radius+35,12,ball.radius+50,0);ctx.stroke();}ctx.restore();},
     },
   };
 }

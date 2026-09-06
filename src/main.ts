@@ -485,6 +485,10 @@ function drawEffectParticle(p:Particle):void{
   ctx.save();ctx.globalAlpha=Math.min(1,p.life/8);ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle=p.stroke??'#151515';ctx.lineWidth=1.5;
   const size=p.size??6;
   if(p.kind==='ice'||p.kind==='slash'||p.kind==='glass'){ctx.beginPath();ctx.moveTo(0,-size);ctx.lineTo(size*.55,size);ctx.lineTo(-size*.55,size*.45);ctx.closePath();ctx.fill();ctx.stroke();}
+  else if(p.kind==='note'){ctx.rotate(-(p.rotation??0));ctx.font=`bold ${Math.max(13,size*2.2)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=3;ctx.strokeText(p.rotation&&p.rotation>Math.PI?'♫':'♪',0,0);ctx.fillText(p.rotation&&p.rotation>Math.PI?'♫':'♪',0,0);}
+  else if(p.kind==='rest'){ctx.rotate(-(p.rotation??0));ctx.font=`bold ${Math.max(12,size*2)}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=3;ctx.strokeText('𝄽',0,0);ctx.fillText('𝄽',0,0);}
+  else if(p.kind==='staff'){ctx.rotate(-(p.rotation??0));ctx.lineWidth=2;for(let row=-2;row<=2;row++){ctx.beginPath();ctx.moveTo(-size*1.5,row*size*.28);ctx.lineTo(size*1.5,row*size*.28);ctx.stroke();}}
+  else if(p.kind==='thread'){ctx.lineCap='round';ctx.strokeStyle=p.stroke??'#151515';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(-size,0);ctx.bezierCurveTo(-size*.45,-size*.65,size*.3,size*.65,size,0);ctx.stroke();ctx.strokeStyle=p.color;ctx.lineWidth=2;ctx.stroke();}
   else if(p.kind==='ray'){ctx.globalAlpha*=.8;ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(3,size*.32);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-size*.25,0);ctx.lineTo(size*2.4,0);ctx.stroke();}
   else if(p.kind==='web'){ctx.fillStyle='none';ctx.strokeStyle=p.color;ctx.lineWidth=1.5;for(let i=0;i<4;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(-Math.cos(a)*size,-Math.sin(a)*size);ctx.lineTo(Math.cos(a)*size,Math.sin(a)*size);ctx.stroke();}ctx.beginPath();ctx.arc(0,0,size*.55,0,Math.PI*2);ctx.stroke();}
   else if(p.kind==='bubble'||p.kind==='ring'){ctx.globalAlpha*=.75;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.strokeStyle=p.color;ctx.stroke();}

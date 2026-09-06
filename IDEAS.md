@@ -38,6 +38,18 @@ A neon assassin whose thrown Data Blade becomes an Anchor. Shogun Blinks to it, 
 
 A physically unimpressive boss protected by one orbiting Enforcer. The Enforcer uses Intercept against a major hit, delivers Retaliation, and then leaves Capo exposed while it recovers.
 
+### Maestro — the theatrical performer
+
+A flamboyant bandleader who conducts every collision through Tap, Crescendo, and Bass Drop before beginning the three-count again.
+
+### Oracle — the impossible predictor
+
+An arena seer who marks where the opponent’s current path will lead. Remaining inside the visible Vision invites Fate Strike; changing course produces Fate Evaded.
+
+### Marionette — the haunted puppet
+
+A puppet tethered to the arena by four visible Strings. Wall impacts cause String Snap until the fighter becomes briefly Unbound, then Restrung.
+
 ## High-priority concepts
 
 ### Crystal — the unstable prodigy
@@ -47,10 +59,6 @@ Taking damage grows a dangerous crystal shell around the fighter. At maximum gro
 ### Marshal — the uncompromising lawman
 
 Marshal periodically draws a bright boundary across the arena and declares it closed. Crossing that line during the warning window triggers an immediate intercepting charge.
-
-### Maestro — the theatrical performer
-
-Every successful collision advances a visible three-beat song: Tap, Crescendo, Bass Drop. Bass Drop releases a circular knockback wave and resets the rhythm.
 
 ### Undertaker — the unstoppable slasher
 
@@ -93,14 +101,6 @@ Fires a tether into a wall and slowly reels toward it while leaving a floating o
 ### Gumshoe — the noir detective
 
 The first collision leaves a Chalk Mark at the scene. If the opponent crosses that mark again, Gumshoe solves the Case and fires a short, unavoidable retaliation.
-
-### Oracle — the impossible predictor
-
-Places a translucent vision of where the opponent will be after a short delay. If the prediction is correct, Fate strikes that location; a miss simply dissolves the vision.
-
-### Marionette — the haunted puppet
-
-Four visible strings connect it to the arena edges. Each wall collision snaps one string and changes its movement angle; losing the final string triggers a brief, wild Unbound form.
 
 ### Doppel — the suspicious impostor
 

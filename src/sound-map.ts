@@ -1,6 +1,6 @@
 import type {SoundCue} from './types';
 
-export type SynthSound='rustle'|'whoosh'|'drain'|'rumble'|'ascend';
+export type SynthSound='rustle'|'whoosh'|'drain'|'rumble'|'ascend'|'musicTap'|'musicRise'|'musicBass';
 export type SoundDefinition={
   /** Put a file in public/audio and reference it here as /audio/your-file.ext. */
   file?:string;
@@ -18,6 +18,15 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  maestroTap:{volume:.38,rate:1,synth:'musicTap',cooldownMs:90},
+  maestroCrescendo:{volume:.46,rate:1,synth:'musicRise',cooldownMs:90},
+  bassDrop:{volume:.62,rate:1,synth:'musicBass',cooldownMs:160},
+  oracleVision:{file:'/audio/teleport.mp3',volume:.26,rate:1.55,cooldownMs:150},
+  fateStrike:{file:'/audio/laser-fire.mp3',volume:.46,rate:.78,cooldownMs:140},
+  fateEvaded:{volume:.12,rate:1,synth:'whoosh',cooldownMs:120},
+  stringSnap:{file:'/audio/lance-whoosh.mp3',volume:.3,rate:1.5,variance:.06,cooldownMs:90},
+  unbound:{file:'/audio/mechanical-clank.mp3',volume:.44,rate:.64,cooldownMs:160},
+  restring:{file:'/audio/healing.mp3',volume:.2,rate:1.35,cooldownMs:180},
   spotlight:{file:'/audio/goldie-coin.mp3',volume:.3,rate:1.45,cooldownMs:180},
   laserSweep:{file:'/audio/laser-fire.mp3',volume:.4,rate:.68,cooldownMs:300},
   laserHit:{file:'/audio/laser-fire.mp3',volume:.48,rate:1.25,cooldownMs:120},

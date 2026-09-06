@@ -25,6 +25,7 @@ const fighter=(id:string):Fighter=>{const result=getFighter(id);assert.ok(result
 const makeBall=(id:string,side:Side):Ball=>createInitialBall(fighter(id),side,()=>.5);
 for(const candidate of fighters){
   assert.equal(new Set(candidate.specs.map(item=>item.label)).size,candidate.specs.length,`${candidate.id} must not repeat an info-block label`);
+  if(['maestro','oracle','marionette'].includes(candidate.id))assert.ok(contrastRatio(candidate.accent,'#dad5c3')>=2.5,`${candidate.id} arena effects must remain legible against the play field`);
   for(const item of candidate.specs){
     assert.ok(specIconNames.has(item.icon),`${candidate.id} uses unknown info-block icon ${item.icon}`);
     assert.doesNotMatch(`${item.label} ${item.value}`,/\b(?:px|pixels?|ticks?|frames?|force|acceleration)\b/i,`${candidate.id} must not expose engine units in its info card`);
@@ -78,6 +79,9 @@ for(const [id,seed,phases] of [
   ['neon','new-neon-0',['SPOTLIGHT!','LIGHT SHOW!','ENCORE!']],
   ['shogun','new-shogun-0',['DATA BLADE!','ANCHOR SET!','BLINK!','PHASE CUT!']],
   ['capo','new-capo-38',['INTERCEPT!','RETALIATION!']],
+  ['maestro','character-maestro-0',['TAP!','CRESCENDO!','BASS DROP!']],
+  ['oracle','character-oracle-0',['VISION!','FATE STRIKE!','FATE EVADED!']],
+  ['marionette','character-marionette-0',['STRING SNAP!','UNBOUND!','WILD STRIKE!','RESTRUNG!']],
 ] as const){
   const candidate=fighter(id),first=simulateMatch(candidate,fighter('anchor'),seed);
   assert.ok(candidate.specs.length<=5,`${id} must stay at or below the Spider-sized info-card complexity ceiling`);
@@ -89,6 +93,9 @@ for(const [id,terms,labels] of [
   ['neon',['Spotlight','Wind Up','Light Show','Encore'],['Wind Up duration','Light Show duration','Encore damage','Encore shield penetration','Light Show recovery']],
   ['shogun',['Data Blade','Anchor','Blinks','Phase Cut'],['Anchor warning','Phase Cut bonus damage','Phase Cut shield penetration','Phase Cut recovery']],
   ['capo',['Enforcer','Intercept','Retaliation'],['Intercept damage block','Retaliation damage','Enforcer recovery']],
+  ['maestro',['Tap','Crescendo','Bass Drop'],['Tap bonus damage','Crescendo bonus damage','Crescendo speed','Bass Drop trigger','Bass Drop bonus damage']],
+  ['oracle',['Vision','Fate Strike','Fate Evaded'],['Vision delay','Fate Strike damage','Fate Strike shield penetration','Future Sight recovery']],
+  ['marionette',['String Snap','Unbound','Restrung'],['Unbound trigger','Unbound duration','Unbound damage']],
 ] as const){
   const info=fighter(id);for(const term of terms)assert.ok(info.desc.includes(term),`${id} should explain ${term}`);assert.deepEqual(info.specs.map(item=>item.label),labels,`${id} should use one consistent move vocabulary`);
 }

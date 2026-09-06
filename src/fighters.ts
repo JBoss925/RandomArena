@@ -65,28 +65,43 @@ fighters.push(
   {id:'capo',name:'CAPO',color:'#322d35',accent:'#f0c45b',shineColor:'#aaa4ad',speed:.9,power:1,mass:1.04,behaviors:['loyalEnforcer'],ability:'LOYALTY PAYS',desc:'An unassuming boss shadowed by one orbiting Enforcer. While the Enforcer is ready, the next damaging hit triggers Intercept: it absorbs part of the blow, knocks the attacker away, and delivers Retaliation. Capo is exposed until the Enforcer returns.',specs:[spec('block','Intercept damage block','6 HP'),spec('damage','Retaliation damage','8 HP'),spec('clock','Enforcer recovery','4 seconds')]},
 );
 
+fighters.push(
+  {id:'maestro',name:'MAESTRO',color:'#126f72',accent:'#f7d85a',shineColor:'#9fcfd0',speed:1,power:1,mass:.98,behaviors:['threeBeat'],ability:'THREE-COUNT',desc:'A theatrical bandleader who conducts every Body Hit through one escalating phrase. Tap establishes the rhythm, Crescendo accelerates Maestro into the next beat, and Bass Drop cashes out the tempo with heavy damage and a circular blast before the song begins again.',specs:[spec('damage','Tap bonus damage','+1.65 HP'),spec('damage','Crescendo bonus damage','+4.9 HP'),spec('trend','Crescendo speed','+18%'),spec('stack','Bass Drop trigger','Every 3rd hit'),spec('damage','Bass Drop bonus damage','+15.75 HP')]},
+  {id:'oracle',name:'ORACLE',color:'#714fbe',accent:'#7ff4e8',shineColor:'#c5b6e5',speed:.94,power:1,mass:.94,behaviors:['futureSight'],ability:'FUTURE SIGHT',desc:'An impossible seer who places a visible Vision where the opponent’s current path will lead. When the omen resolves, an opponent still inside the Vision is struck by Fate Strike; changing course in time makes Fate Evaded. Oracle continually reads another future after each prediction.',specs:[spec('clock','Vision delay','1.2 seconds'),spec('damage','Fate Strike damage','20 HP'),spec('shield','Fate Strike shield penetration','25%'),spec('clock','Future Sight recovery','2.5 seconds')]},
+  {id:'marionette',name:'MARIONETTE',color:'#8c315d',accent:'#8ff0df',shineColor:'#d4a8c0',speed:.9,power:1,mass:1,behaviors:['severedStrings'],ability:'UNBOUND',desc:'A haunted puppet tethered to the arena by four visible Strings. Each wall collision causes String Snap and twists Marionette onto a new trajectory. Breaking the fourth String triggers Unbound, a brief frenzy of speed and damage, before Marionette becomes Restrung and begins the cycle again.',specs:[spec('stack','Unbound trigger','4 String Snaps'),spec('clock','Unbound duration','2.13 seconds'),spec('trend','Unbound damage','+70%')]},
+);
+
 // Balance coefficients are kept separate from kit identity so mechanical tuning
 // never obscures the readable fantasy definitions above.
 const powerTuning:Record<string,number>={volt:.768,brick:.7,mint:.9083,goldie:1.0686,void:.7613,bubble:1.1287,moss:.8565,glitch:.9484,frost:.78,ember:.788,echo:.7947,rook:.601,comet:1.4159,static:.9283,anchor:.8014,orbit:1.0686,saber:.768,slugger:.6945,shotgun:1.2823,sniper:1.603,lance:1.15,grower:1.1488,flail:1.22,polar:1.32,mothership:.5,spider:.95,claymore:.9,cobra:1};
 const bodyDamageTuning:Record<string,number>={volt:.7,brick:.95,mint:.75,goldie:.55,void:.8,bubble:.5,moss:.65,glitch:.6,frost:.55,ember:.65,echo:.6,rook:.8,comet:.5,static:.6,anchor:.65,orbit:.45,saber:.22,slugger:.35,shotgun:.35,sniper:.25,lance:.1,grower:.68,flail:.14,polar:.58,mothership:.625,spider:.62,claymore:.38,cobra:.12};
 const bodyMaterials:Record<string,Material>={volt:'plastic',brick:'stone',mint:'rubber',goldie:'metal',void:'energy',bubble:'rubber',moss:'wood',glitch:'energy',frost:'glass',ember:'ceramic',echo:'glass',rook:'metal',comet:'glass',static:'energy',anchor:'metal',orbit:'metal',saber:'plastic',slugger:'plastic',shotgun:'plastic',sniper:'plastic',lance:'wood',grower:'rubber',flail:'metal',polar:'energy',mothership:'metal',spider:'rubber',claymore:'metal',cobra:'rubber'};
+// These fighters use a separate, darker arena-effect color while preserving
+// the softer highlight on the ball itself.
+const effectColors:Record<string,string>={
+  maestro:'#7b5d00',oracle:'#315f75',marionette:'#60401f',
+};
 const weaponMaterials:Record<string,Material>={sword:'metal',bat:'wood',lance:'metal',shotgun:'metal',sniper:'metal'};
 Object.assign(powerTuning,{corsair:1,dynamo:1.25,hourglass:1.64,gatekeeper:1.4211,conductor:.8273,matryoshka:.84});
 Object.assign(powerTuning,{phantom:.96,alchemist:1.614,ronin:.98});
 Object.assign(powerTuning,{stillpoint:.83,ascendant:.9,luchador:.75});
 Object.assign(powerTuning,{neon:.92,shogun:.97,capo:.88});
+Object.assign(powerTuning,{maestro:.828,oracle:.9,marionette:.875});
 Object.assign(bodyDamageTuning,{gatekeeper:.38,conductor:.42,matryoshka:.35,phantom:.42,alchemist:.38,ronin:.12});
 Object.assign(bodyDamageTuning,{stillpoint:.6,ascendant:.4,luchador:.32});
 Object.assign(bodyDamageTuning,{neon:.65,shogun:.34,capo:.52});
+Object.assign(bodyDamageTuning,{maestro:.393,oracle:.48,marionette:.59});
 Object.assign(bodyMaterials,{gatekeeper:'energy',conductor:'metal',matryoshka:'wood',phantom:'energy',alchemist:'glass',ronin:'metal'});
 Object.assign(bodyMaterials,{stillpoint:'wood',ascendant:'stone',luchador:'rubber'});
 Object.assign(bodyMaterials,{neon:'energy',shogun:'metal',capo:'plastic'});
+Object.assign(bodyMaterials,{maestro:'wood',oracle:'energy',marionette:'wood'});
 bodyDamageTuning.dynamo=.12;
 fighters.find(f=>f.id==='dynamo')!.poisonDamageScale=1.5;
 for(const fighter of fighters){
   const shineColors:Record<string,string>={corsair:'#b6dfe7',dynamo:'#ffc6b5',hourglass:'#d8cfee'};
   if(shineColors[fighter.id])fighter.shineColor=shineColors[fighter.id];
   if(fighter.id==='hourglass')fighter.accent=fighter.color;
+  if(effectColors[fighter.id]){fighter.shineColor??=fighter.accent;fighter.accent=effectColors[fighter.id];}
   fighter.power=powerTuning[fighter.id]??1;fighter.bodyDamageScale=bodyDamageTuning[fighter.id]??.35;fighter.material=bodyMaterials[fighter.id]??'plastic';
   if(fighter.weapon)fighter.weapon.material=weaponMaterials[fighter.weapon.type]??'plastic';
   const damageSpecs:Record<string,Record<string,string>>={
@@ -104,6 +119,8 @@ for(const fighter of fighters){
     neon:{'Encore damage':`${displayNumber(10*fighter.power)} HP`},
     shogun:{'Phase Cut bonus damage':`+${displayNumber(30*fighter.power)} HP`},
     capo:{'Retaliation damage':`${displayNumber(8*fighter.power)} HP`},
+    maestro:{'Tap bonus damage':`+${displayNumber(1.65*fighter.power)} HP`,'Crescendo bonus damage':`+${displayNumber(4.9*fighter.power)} HP`,'Bass Drop bonus damage':`+${displayNumber(15.75*fighter.power)} HP`},
+    oracle:{'Fate Strike damage':`${displayNumber(20*fighter.power)} HP`},
   };
   for(const item of fighter.specs){const value=damageSpecs[fighter.id]?.[item.label];if(value)item.value=value;}
 }
