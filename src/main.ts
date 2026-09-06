@@ -227,6 +227,7 @@ function update(dt:number):void {
     if(b.wallCrash&&b.wallCrash.frames>0)b.wallCrash.frames--;
     const rival=s.balls.find(other=>other!==b)!;
     const behaviorContext={sim:s,rival,event:{dt,force:0,damage:0},random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};
+    if(b.luchaCaptured)continue;
     runBehaviorHook(b,'tick',behaviorContext);
     if (b.frozen || b.stunned) continue;
     runBehaviorHook(b,'beforeMove',behaviorContext);
@@ -251,6 +252,7 @@ function update(dt:number):void {
   resolveWeaponHits(s.balls.map((ball,index)=>collectWeaponHit(ball,s.balls[1-index],dt)).filter((hit):hit is WeaponHit=>hit!==null),s);
   collideBalls(s);
   if (s.ticks > 60*24 && !s.finished) { const [a,b]=s.balls; applyDamage(a,.18,'fatigue');applyDamage(b,.18,'fatigue'); }
+  for(const b of s.balls)runBehaviorHook(b,'beforeOutcome',{sim:s,rival:s.balls.find(other=>other!==b)!});
   const outcome=resolveOutcome(s.balls[0],s.balls[1],{lastExchange:s.lastExchange,tick:s.ticks});
   if(outcome)finishFight(outcome.winner,outcome);
 }
@@ -483,6 +485,7 @@ function drawEffectParticle(p:Particle):void{
   ctx.save();ctx.globalAlpha=Math.min(1,p.life/8);ctx.translate(p.x,p.y);ctx.rotate(p.rotation??0);ctx.fillStyle=p.color;ctx.strokeStyle=p.stroke??'#151515';ctx.lineWidth=1.5;
   const size=p.size??6;
   if(p.kind==='ice'||p.kind==='slash'||p.kind==='glass'){ctx.beginPath();ctx.moveTo(0,-size);ctx.lineTo(size*.55,size);ctx.lineTo(-size*.55,size*.45);ctx.closePath();ctx.fill();ctx.stroke();}
+  else if(p.kind==='ray'){ctx.globalAlpha*=.8;ctx.strokeStyle=p.color;ctx.lineWidth=Math.max(3,size*.32);ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-size*.25,0);ctx.lineTo(size*2.4,0);ctx.stroke();}
   else if(p.kind==='web'){ctx.fillStyle='none';ctx.strokeStyle=p.color;ctx.lineWidth=1.5;for(let i=0;i<4;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(-Math.cos(a)*size,-Math.sin(a)*size);ctx.lineTo(Math.cos(a)*size,Math.sin(a)*size);ctx.stroke();}ctx.beginPath();ctx.arc(0,0,size*.55,0,Math.PI*2);ctx.stroke();}
   else if(p.kind==='bubble'||p.kind==='ring'){ctx.globalAlpha*=.75;ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.strokeStyle=p.color;ctx.stroke();}
   else if(p.kind==='leaf'){ctx.scale(1,.55);ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.fill();ctx.stroke();}
@@ -641,9 +644,9 @@ function impact(word:string,origin:Point|Ball):void{
   s.impactPopups.push({word,x,y,born:performance.now(),size:word.length>12?24:word.length>8?29:36,rotation:(index%2?1:-1)*(.045+(index%3)*.025),color:word.includes('+')?'#8ee888':word.includes('−')?'#ff8c82':'#edff24'});
 }
 
-function emitParticles(origin:Point|Ball,{count=10,color='#fff',speed=300,gravity=500,kind='spark',size=6}:ParticleOptions={}):void{
+function emitParticles(origin:Point|Ball,{count=10,color='#fff',speed=300,gravity=500,kind='spark',size=6,pattern='burst',spawnRadius=0}:ParticleOptions={}):void{
   const s=state.sim;if(!s||!origin)return;
-  for(let i=0;i<count;i++){const angle=s.visualRng()*Math.PI*2,magnitude=speed*(.45+s.visualRng()*.75);s.particles.push({x:origin.x,y:origin.y,vx:Math.cos(angle)*magnitude,vy:Math.sin(angle)*magnitude,gravity,life:20+Math.floor(s.visualRng()*18),color,kind,size:size*(.65+s.visualRng()*.7),rotation:s.visualRng()*Math.PI*2,spin:(s.visualRng()-.5)*12,stroke:kind==='ice'?'#5caac0':null});}
+  for(let i=0;i<count;i++){const radial=pattern==='spiral'?i/count*Math.PI*2+s.ticks*.075:s.visualRng()*Math.PI*2,angle=pattern==='spiral'?radial+Math.PI*.58:radial,magnitude=speed*(.45+s.visualRng()*.75),x=origin.x+Math.cos(radial)*spawnRadius,y=origin.y+Math.sin(radial)*spawnRadius;s.particles.push({x,y,vx:Math.cos(angle)*magnitude,vy:Math.sin(angle)*magnitude,gravity,life:20+Math.floor(s.visualRng()*18),color,kind,size:size*(.65+s.visualRng()*.7),rotation:kind==='ray'?angle:s.visualRng()*Math.PI*2,spin:kind==='ray'?0:(s.visualRng()-.5)*12,stroke:kind==='ice'?'#5caac0':null});}
 }
 
 function materialContact(origin:Point|Ball,a:Material|undefined,b:Material|undefined,force:number,{wall=false,primary=false,balls=[],volume=1,foundation}:{wall?:boolean;primary?:boolean;balls?:Ball[];volume?:number;foundation?:'body'|'wall'}={}):ContactFeedback{

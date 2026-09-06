@@ -64,6 +64,31 @@ for(const [id,opponent,seed,phases] of [
   assert.deepEqual(first,simulateMatch(fighter(id),fighter(opponent),seed),`${id} must replay its full attack cycle deterministically`);
   for(const phase of phases)assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
 }
+for(const [id,seed,phases] of [
+  ['stillpoint','stillpoint-ritual-3',['MEDITATE!','SERENITY WARD!','CENTERED!','PALM STRIKE!','DISTURBED!']],
+  ['ascendant','theme-ascendant-0',['ASCEND!','ASCENDED!']],
+  ['luchador','theme-luchador-0',['CLINCH!','RING TOSS!']],
+] as const){
+  const candidate=fighter(id),first=simulateMatch(candidate,fighter('anchor'),seed);
+  assert.ok(candidate.specs.length<=5,`${id} must stay at or below the Spider-sized info-card complexity ceiling`);
+  assert.deepEqual(first,simulateMatch(candidate,fighter('anchor'),seed),`${id} must replay its complete character loop deterministically`);
+  for(const phase of phases)assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
+}
+const ascendant=makeBall('ascendant','left'),ascendantTarget=makeBall('anchor','right'),firstRadius=ascendant.radius;
+Object.assign(ascendant,{hp:-4,burn:20,burnStacks:2,poisonStacks:3,stunned:8});
+runBehaviorHook(ascendant,'beforeOutcome',{rival:ascendantTarget,showImpact:()=>{},emitParticles:()=>{},playSound:()=>{}});
+assert.equal(ascendant.hp,35,'Ascendant should replace its first lethal result with a 35 HP second life');
+assert.equal(ascendant.ascended,true,'Ascendant may complete Ascension only once');
+assert.ok(ascendant.radius<firstRadius&&ascendant.powerScale===2,'Ascension should reveal a smaller glass-cannon form');
+assert.equal(ascendant.poisonStacks+ascendant.burnStacks,0,'Ascension should cleanse the defeated shell damage states');
+assert.equal(Math.hypot(ascendant.vx,ascendant.vy),0,'Ascendant should stop moving during Ascension');
+const transformationHit:CombatEvent={damage:20,force:8};runBehaviorHook(ascendant,'modifyIncoming',{rival:ascendantTarget,event:transformationHit});
+assert.equal(transformationHit.damage,0,'Ascendant should be invulnerable during Ascension');
+assert.equal(transformationHit.ascensionReject,true,'contact during Ascension should arm Cosmic Rejection feedback');
+assert.equal(applyDamage(ascendant,20,'hazard'),0,'Ascension invulnerability should reject direct damage sources too');
+assert.equal(ascendant.hp,35,'direct damage should not create fake health loss during Ascension');
+ascendant.ascensionFrames=0;const ascendedHit={damage:20,force:8};runBehaviorHook(ascendant,'modifyIncoming',{rival:ascendantTarget,event:ascendedHit});
+assert.equal(ascendedHit.damage,20,'the Ascended form should return to ordinary damage rules');
 const ronin=makeBall('ronin','left'),cutTarget=makeBall('volt','right');
 Object.assign(ronin,{vx:1480,vy:0,ronin:{phase:'recovery',frames:36,angle:0,hit:false,counter:false,final:false,startedTick:1}});
 Object.assign(cutTarget,{vx:1850,vy:720});

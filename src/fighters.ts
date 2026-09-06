@@ -53,6 +53,12 @@ fighters.push(
   {id:'matryoshka',name:'MATRYOSHKA',color:'#a83252',accent:'#ffd18a',shineColor:'#edb8c5',speed:.82,power:1,mass:1.15,radiusScale:1.15,behaviors:['nestedArsenal'],ability:'FINAL FORM',desc:'A three-stage arsenal hidden inside breakable shells. Outer Shell is large, armored, and carries a launching Hammer. Shell Break reveals a smaller, faster Twin Blade form. Core Exposed becomes tiny, accelerates continuously, and periodically spends its own HP to fire an explosive Meltdown volley.',specs:[spec('shield','Outer Shell damage reduction','28%'),spec('damage','Hammer Blow damage','14 HP'),spec('heart','Shell Break trigger','At 66 HP'),spec('damage','Twin Slash damage','7 HP'),spec('heart','Core Exposed trigger','At 33 HP'),spec('projectile','Meltdown Core Shards','16 projectiles'),spec('damage','Core Shard damage','6 HP each'),spec('damage','Meltdown self-damage','8 HP'),spec('clock','Meltdown interval','3–4 seconds')]},
 );
 
+fighters.push(
+  {id:'stillpoint',name:'STILLPOINT',color:'#d8832f',accent:'#fff0a8',shineColor:'#f2c895',speed:.9,power:1,mass:1,behaviors:['stillMind'],ability:'EMPTY HAND',desc:'A serene martial master who stops once to Meditate behind a one-hit Serenity Ward. After the Ward breaks, up to two hits leave Stillpoint Disturbed and extend Meditate. Completing Meditate leaves Stillpoint Centered and readies one devastating Palm Strike that halts and launches its target.',specs:[spec('clock','Meditate duration','3 seconds'),spec('block','Serenity Ward damage block','100%'),spec('shield','Meditate damage reduction','25%'),spec('damage','Palm Strike bonus damage','+35 HP'),spec('shield','Palm Strike shield penetration','50%')]},
+  {id:'ascendant',name:'ASCENDANT',color:'#665f67',accent:'#d8b7ff',shineColor:'#aaa4ab',speed:.82,power:1,mass:1.12,radiusScale:1.12,behaviors:['secondDawn'],ability:'ASCENSION',desc:'A stone guardian carrying one luminous second life. Its shell softens ordinary Body Hits, but weapons and special attacks strike at full strength. The first lethal blow begins Ascension: Ascendant stops, becomes invulnerable, and rejects incoming fighters while its shell explodes away. It emerges Ascended—a smaller, faster glass cannon with twice the damage and no third life.',specs:[spec('shield','Body Hit damage reduction','20%'),spec('heart','Ascension trigger','At 0 HP'),spec('clock','Ascension invulnerability','1.2 seconds'),spec('heart','Ascended health','35 HP'),spec('trend','Ascended damage','+100%')]},
+  {id:'luchador',name:'LUCHADOR',color:'#22a6a1',secondaryColor:'#f04f45',accent:'#ffe260',shineColor:'#9ce3df',speed:1.02,power:1,mass:.98,behaviors:['ringShowman'],ability:'THE MAIN EVENT',desc:'A fearless showman who makes every fight The Main Event. An ordinary Body Hit becomes a Clinch that spins both fighters around the ring, then ends with a Ring Toss that hurls them in opposite directions. After Ring Toss, Luchador must recover before starting another Clinch.',specs:[spec('damage','Clinch bonus damage','+18 HP'),spec('shield','Clinch shield penetration','25%'),spec('clock','Clinch duration','0.4 seconds'),spec('clock','Ring Toss recovery','2 seconds')]},
+);
+
 // Balance coefficients are kept separate from kit identity so mechanical tuning
 // never obscures the readable fantasy definitions above.
 const powerTuning:Record<string,number>={volt:.768,brick:.7,mint:.9083,goldie:1.0686,void:.7613,bubble:1.1287,moss:.8565,glitch:.9484,frost:.78,ember:.788,echo:.7947,rook:.601,comet:1.4159,static:.9283,anchor:.8014,orbit:1.0686,saber:.768,slugger:.6945,shotgun:1.2823,sniper:1.603,lance:1.15,grower:1.1488,flail:1.22,polar:1.32,mothership:.5,spider:.95,claymore:.9,cobra:1};
@@ -61,8 +67,11 @@ const bodyMaterials:Record<string,Material>={volt:'plastic',brick:'stone',mint:'
 const weaponMaterials:Record<string,Material>={sword:'metal',bat:'wood',lance:'metal',shotgun:'metal',sniper:'metal'};
 Object.assign(powerTuning,{corsair:1,dynamo:1.25,hourglass:1.64,gatekeeper:1.4211,conductor:.8273,matryoshka:.84});
 Object.assign(powerTuning,{phantom:.96,alchemist:1.614,ronin:.98});
+Object.assign(powerTuning,{stillpoint:.83,ascendant:.9,luchador:.75});
 Object.assign(bodyDamageTuning,{gatekeeper:.38,conductor:.42,matryoshka:.35,phantom:.42,alchemist:.38,ronin:.12});
+Object.assign(bodyDamageTuning,{stillpoint:.6,ascendant:.4,luchador:.32});
 Object.assign(bodyMaterials,{gatekeeper:'energy',conductor:'metal',matryoshka:'wood',phantom:'energy',alchemist:'glass',ronin:'metal'});
+Object.assign(bodyMaterials,{stillpoint:'wood',ascendant:'stone',luchador:'rubber'});
 bodyDamageTuning.dynamo=.12;
 fighters.find(f=>f.id==='dynamo')!.poisonDamageScale=1.5;
 for(const fighter of fighters){
@@ -81,6 +90,8 @@ for(const fighter of fighters){
     phantom:{'Echo Strike damage':`${displayNumber(13*fighter.power)} HP`},
     alchemist:{'Acid Pool damage':`${displayNumber(2.2*fighter.power)} HP/s`,'Acid Reaction damage':`${displayNumber(16*fighter.power)} HP`,'Catalyst Burst damage':`${displayNumber(7*fighter.power)} HP`},
     ronin:{'Draw Cut bonus damage':`+${displayNumber(24*fighter.power)} HP`,'Counter Cut bonus damage':`+${displayNumber(30*fighter.power)} HP`,'Counter Cut speed bonus':`Up to +${displayNumber(45*fighter.power)} HP`,'Heavy target cut bonus':`+${displayNumber(2*fighter.power)} HP`,'Final Cut bonus damage':`+${displayNumber(42*fighter.power)} HP`},
+    stillpoint:{'Palm Strike bonus damage':'+35 HP'},
+    luchador:{'Clinch bonus damage':`+${displayNumber(18*fighter.power)} HP`},
   };
   for(const item of fighter.specs){const value=damageSpecs[fighter.id]?.[item.label];if(value)item.value=value;}
 }

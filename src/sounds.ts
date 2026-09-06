@@ -74,7 +74,14 @@ function loadSound(file:string):Promise<HTMLAudioElement|undefined>{
 
 function playSynth(kind:SynthSound,volume:number,random:RandomSource):void{
   synthContext??=new AudioContext();
-  const context=synthContext,now=context.currentTime,gain=context.createGain();
+  const context=synthContext,now=context.currentTime;
+  if(kind==='ascend'){
+    const duration=1.15,master=context.createGain();master.gain.setValueAtTime(.0001,now);master.gain.exponentialRampToValueAtTime(Math.min(.13,volume),now+.09);master.gain.setValueAtTime(Math.min(.13,volume),now+.72);master.gain.exponentialRampToValueAtTime(.0001,now+duration);master.connect(context.destination);
+    for(const [index,start] of [82,164,246].entries()){const oscillator=context.createOscillator(),gain=context.createGain();oscillator.type=index===1?'triangle':'sine';oscillator.frequency.setValueAtTime(start,now);oscillator.frequency.exponentialRampToValueAtTime(start*(index+2.4),now+.82);gain.gain.setValueAtTime(.5/(index+1),now);gain.gain.exponentialRampToValueAtTime(.08,now+duration);oscillator.connect(gain).connect(master);oscillator.start(now);oscillator.stop(now+duration);}
+    const length=Math.floor(context.sampleRate*duration),buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);for(let i=0;i<length;i++)data[i]=(random()*2-1)*(i/length)*.28;
+    const shimmer=context.createBufferSource(),filter=context.createBiquadFilter();shimmer.buffer=buffer;filter.type='highpass';filter.frequency.setValueAtTime(900,now);filter.frequency.exponentialRampToValueAtTime(4200,now+.8);shimmer.connect(filter).connect(master);shimmer.start(now);return;
+  }
+  const gain=context.createGain();
   gain.gain.setValueAtTime(Math.min(.16,volume),now);gain.gain.exponentialRampToValueAtTime(.0001,now+.2);gain.connect(context.destination);
   if(kind==='rustle'||kind==='whoosh'){
     const length=Math.floor(context.sampleRate*.2),buffer=context.createBuffer(1,length,context.sampleRate),data=buffer.getChannelData(0);

@@ -8,7 +8,7 @@ export const BURN_DAMAGE_PER_SECOND_PER_STACK=.9;
  * so balance runs pay no allocation cost for presentation-only animation data.
  */
 export function applyDamage(ball:Ball,amount:number,type:DamageType='physical'):number{
-  if(!Number.isFinite(amount)||amount<=0)return 0;
+  if(ball.invulnerable||!Number.isFinite(amount)||amount<=0)return 0;
   const from=ball.hp;
   ball.hp-=amount;
   if(ball.healthDamageReceipts){

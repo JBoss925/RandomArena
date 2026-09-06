@@ -1,6 +1,6 @@
 import type {SoundCue} from './types';
 
-export type SynthSound='rustle'|'whoosh'|'drain'|'rumble';
+export type SynthSound='rustle'|'whoosh'|'drain'|'rumble'|'ascend';
 export type SoundDefinition={
   /** Put a file in public/audio and reference it here as /audio/your-file.ext. */
   file?:string;
@@ -18,6 +18,13 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  meditate:{file:'/audio/healing.mp3',volume:.2,rate:.72,cooldownMs:220},
+  serenityWard:{file:'/audio/bubble-pop.mp3',volume:.48,rate:.72,cooldownMs:180},
+  meditationBreak:{file:'/audio/glass-tick.ogg',volume:.34,rate:.82,cooldownMs:140},
+  palmStrike:{file:'/audio/soft-hit.ogg',volume:.72,rate:.68,cooldownMs:160},
+  ascend:{volume:.72,rate:1,synth:'ascend',cooldownMs:320},
+  clinch:{file:'/audio/soft-hit.ogg',volume:.52,rate:.85,cooldownMs:160},
+  ringToss:{file:'/audio/lance-whoosh.mp3',volume:.45,rate:.78,cooldownMs:220},
   phantomSpawn:{file:'/audio/teleport.mp3',volume:.25,rate:1.65,cooldownMs:150},
   phantomStrike:{file:'/audio/teleport.mp3',volume:.34,rate:.92,cooldownMs:100},
   flaskThrow:{volume:.16,rate:1,synth:'whoosh',cooldownMs:100},

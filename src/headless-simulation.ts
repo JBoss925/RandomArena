@@ -29,6 +29,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
       if(ball.poisonStacks>0){ball.poisonTick=(ball.poisonTick+1)%30;if(ball.poisonTick===0)applyDamage(ball,poisonDamagePerTick(ball.poisonStacks,ball.f.poisonDamageScale),'poison');}
       if(ball.wallCrash&&ball.wallCrash.frames>0)ball.wallCrash.frames--;
       const rival=sim.balls.find(other=>other!==ball)!,context=ctx(sim,rival,{dt:DT,force:0,damage:0});
+      if(ball.luchaCaptured)continue;
       runBehaviorHook(ball,'tick',context);
       if(ball.frozen||ball.stunned)continue;
       runBehaviorHook(ball,'beforeMove',context);
@@ -48,6 +49,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
     resolveWeaponHits(sim.balls.map((ball,index)=>collectWeaponHit(ball,sim.balls[1-index],DT)).filter((hit):hit is WeaponHit=>hit!==null),sim);
     resolveBodyHit(sim);
     if(sim.ticks>60*24){applyDamage(sim.balls[0],.18,'fatigue');applyDamage(sim.balls[1],.18,'fatigue');}
+    for(const ball of sim.balls)runBehaviorHook(ball,'beforeOutcome',ctx(sim,sim.balls.find(other=>other!==ball)!,{force:0,damage:0}));
     const result=winner(sim);
     if(result)return {...result,hp:{left:sim.balls[0].hp,right:sim.balls[1].hp},ticks:sim.ticks,events:sim.events};
   }

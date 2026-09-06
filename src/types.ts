@@ -5,7 +5,7 @@ export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy
 export type DamageType = 'physical'|'burn'|'poison'|'acid'|'ice'|'electric'|'explosive'|'echo'|'time'|'hazard'|'fatigue';
 export type HealthDamageReceipt = { sequence:number; from:number; to:number; amount:number; type:DamageType };
 export type HealthHealingReceipt = { sequence:number; from:number; to:number; amount:number };
-export type SoundCue = 'phantomSpawn'|'phantomStrike'|'flaskThrow'|'flaskBreak'|'acidSizzle'|'catalystBurst'|'roninFocus'|'roninCut'|'roninCounter'|'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'meditate'|'serenityWard'|'meditationBreak'|'palmStrike'|'ascend'|'clinch'|'ringToss'|'phantomSpawn'|'phantomStrike'|'flaskThrow'|'flaskBreak'|'acidSizzle'|'catalystBurst'|'roninFocus'|'roninCut'|'roninCounter'|'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -79,6 +79,8 @@ export type FlaskKind = 'acid'|'tonic'|'catalyst';
 export type AlchemyFlask = Point&{vx:number;vy:number;kind:FlaskKind;rotation:number;dead:boolean};
 export type AlchemyPool = Point&{kind:'acid'|'tonic';radius:number;frames:number};
 export type RoninState = {phase:'focus'|'dash'|'recovery';frames:number;angle:number;hit:boolean;counter:boolean;final:boolean;startedTick:number};
+export type PalmRelease = {frames:number;dx:number;dy:number};
+export type LuchaState = {frames:number;cx:number;cy:number;angle:number;direction:1|-1};
 
 export type Ball = Point & {
   f: Fighter;
@@ -146,6 +148,24 @@ export type Ball = Point & {
   ronin?: RoninState;
   roninCooldown?: number;
   roninResolve?: number;
+  stillpointCooldown?: number;
+  meditationFrames?: number;
+  meditationVx?: number;
+  meditationVy?: number;
+  meditationSetbacks?: number;
+  palmReady?: boolean;
+  stillpointSpent?: boolean;
+  serenityWard?: boolean;
+  palmRelease?: PalmRelease;
+  ascended?: boolean;
+  ascendantBaseRadius?: number;
+  ascensionFrames?: number;
+  ascensionLaunchVx?: number;
+  ascensionLaunchVy?: number;
+  invulnerable?: boolean;
+  luchaCooldown?: number;
+  luchaState?: LuchaState;
+  luchaCaptured?: boolean;
   voltCharge?: number;
   armorPlates?: number;
   armorRepair?: number;
@@ -209,6 +229,11 @@ export type CombatEvent = {
   phantomMisdirect?: boolean;
   roninCut?: boolean;
   roninCounter?: boolean;
+  palmStrike?: boolean;
+  meditationBreak?: boolean;
+  serenityReflect?: boolean;
+  ascensionReject?: boolean;
+  luchaClinch?: boolean;
   healingScale?: number;
   voltRelease?: number;
   bubblePop?: boolean;
@@ -349,7 +374,7 @@ export type BalanceReport = {
   matrix:Record<string,Record<string,BalanceMatch|null>>;
 };
 
-export type ParticleOptions = { count?:number;color?:string;speed?:number;gravity?:number;kind?:string;size?:number };
+export type ParticleOptions = { count?:number;color?:string;speed?:number;gravity?:number;kind?:string;size?:number;pattern?:'burst'|'spiral';spawnRadius?:number };
 export type BehaviorContext = {
   ball: Ball;
   rival: Ball;
@@ -364,5 +389,5 @@ export type BehaviorContext = {
   ctx: CanvasRenderingContext2D;
 };
 
-export type BehaviorHook = 'wallHit'|'geometryHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawFloor'|'drawBack'|'drawFront';
+export type BehaviorHook = 'wallHit'|'geometryHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'beforeOutcome'|'drawFloor'|'drawBack'|'drawFront';
 export type Behavior = Partial<Record<BehaviorHook,(context:BehaviorContext)=>void>>;
