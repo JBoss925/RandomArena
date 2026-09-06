@@ -217,6 +217,7 @@ function update(dt:number):void {
   for (const e of s.echoes) { e.frames--; if(e.frames===0){const event:CombatEvent={damage:e.damage,force:e.damage,echo:true,ability:true,damageType:'echo'};const context={sim:s,rival:e.attacker,event,random:s.rng,showImpact:impact,emitParticles,audioTone,audioHit,playSound};runBehaviorHook(e.victim,'modifyIncoming',context);applyDamage(e.victim,event.damage,event.damageType);runBehaviorHook(e.victim,'takeHit',context);e.victim.flash=6;e.victim.visualStates.echo=16;impact('ECHO!',e.victim);emitParticles(e.victim,{count:8,color:'#9ce3df',speed:170,gravity:0,kind:'ring',size:7});playSound('echo');} }
   s.echoes=s.echoes.filter(e=>e.frames>0);
   stepParticles(s,dt);
+  for(const b of s.balls){b.tickStartX=b.x;b.tickStartY=b.y;}
   for (const b of s.balls) {
     b.cooldown = Math.max(0,b.cooldown-1); b.weaponCooldown=Math.max(0,b.weaponCooldown-1);b.weaponWorldCooldown=Math.max(0,b.weaponWorldCooldown-1);b.fireCooldown=Math.max(0,b.fireCooldown-1); b.stunned = Math.max(0,b.stunned-1); b.flash = Math.max(0,b.flash-1);
     for(const name of Object.keys(b.visualStates)){b.visualStates[name]--;if(b.visualStates[name]<=0)delete b.visualStates[name];}
@@ -448,6 +449,7 @@ function draw():void {
   ctx.strokeStyle='#777468'; ctx.globalAlpha=.27; ctx.lineWidth=1;
   for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();} for(let y=0;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();} ctx.globalAlpha=1;
   ctx.strokeStyle='#151515';ctx.lineWidth=8;ctx.strokeRect(24,76,W-48,H-100);
+  for(const b of s.balls)runBehaviorHook(b,'drawFloor',{sim:s,ctx});
   drawHazards(s.hazards);
   drawMines(s.mines,s.ticks);
   drawProjectiles(s.projectiles);
@@ -532,6 +534,7 @@ function drawBall(b:Ball):void {
   runBehaviorHook(b,'drawFront',{sim:state.sim??undefined,ctx});
   drawFighterIcon(ctx,b.f.id,b.x,b.y,b.radius*.82);
   if(b.burn>0){ctx.save();ctx.fillStyle='#ff6b1a';for(let i=0;i<5;i++){const a=((state.sim?.ticks??0)*.08+i*1.25),r=b.radius+10+(i%2)*7;ctx.beginPath();ctx.arc(b.x+Math.cos(a)*r,b.y+Math.sin(a)*r,4+i%2*2,0,Math.PI*2);ctx.fill();}ctx.restore();}
+  if((b.visualStates.acid??0)>0){ctx.save();ctx.fillStyle='#b6ec52';ctx.strokeStyle='#315b21';ctx.lineWidth=2;for(let i=0;i<6;i++){const a=((state.sim?.ticks??0)*.12+i*1.05),r=b.radius+7+(i%2)*6;ctx.beginPath();ctx.arc(b.x+Math.cos(a)*r,b.y+Math.sin(a)*r,3+i%2*2,0,Math.PI*2);ctx.fill();ctx.stroke();}ctx.restore();}
   runBehaviorHook(b,'draw',{sim:state.sim??undefined,ctx});
   ctx.restore();
 }

@@ -2,10 +2,10 @@ export type Side = 'left' | 'right';
 export type Winner = Side | 'draw';
 export type RandomSource = () => number;
 export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy'|'ceramic';
-export type DamageType = 'physical'|'burn'|'poison'|'ice'|'electric'|'explosive'|'echo'|'time'|'hazard'|'fatigue';
+export type DamageType = 'physical'|'burn'|'poison'|'acid'|'ice'|'electric'|'explosive'|'echo'|'time'|'hazard'|'fatigue';
 export type HealthDamageReceipt = { sequence:number; from:number; to:number; amount:number; type:DamageType };
 export type HealthHealingReceipt = { sequence:number; from:number; to:number; amount:number };
-export type SoundCue = 'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'phantomSpawn'|'phantomStrike'|'flaskThrow'|'flaskBreak'|'acidSizzle'|'catalystBurst'|'roninFocus'|'roninCut'|'roninCounter'|'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -74,12 +74,19 @@ export type Hazard = Point & { id: string; type: HazardType; r: number; value: n
 export type WallCrash = { frames: number; damage: number };
 export type Portal = Point&{nx:number;ny:number;color:string;wall:number};
 export type CircuitNode = Point&{nx:number;ny:number;born:number};
+export type PhantomEcho = Point&{path:Point[];progress:number;hit:boolean};
+export type FlaskKind = 'acid'|'tonic'|'catalyst';
+export type AlchemyFlask = Point&{vx:number;vy:number;kind:FlaskKind;rotation:number;dead:boolean};
+export type AlchemyPool = Point&{kind:'acid'|'tonic';radius:number;frames:number};
+export type RoninState = {phase:'focus'|'dash'|'recovery';frames:number;angle:number;hit:boolean;counter:boolean;final:boolean;startedTick:number};
 
 export type Ball = Point & {
   f: Fighter;
   side: Side;
   vx: number;
   vy: number;
+  tickStartX?: number;
+  tickStartY?: number;
   radius: number;
   angle: number;
   angularVelocity: number;
@@ -128,6 +135,17 @@ export type Ball = Point & {
   nestWeaponCooldown?: number;
   coreCountdown?: number;
   formColor?: string;
+  phantomHistory?: Point[];
+  phantomEcho?: PhantomEcho;
+  phantomCooldown?: number;
+  phantomMisdirect?: boolean;
+  alchemyFlasks?: AlchemyFlask[];
+  alchemyPools?: AlchemyPool[];
+  alchemyCooldown?: number;
+  alchemyIndex?: number;
+  ronin?: RoninState;
+  roninCooldown?: number;
+  roninResolve?: number;
   voltCharge?: number;
   armorPlates?: number;
   armorRepair?: number;
@@ -188,6 +206,9 @@ export type CombatEvent = {
   shieldPenetration?: number;
   rocketGuard?: boolean;
   portalStrike?: boolean;
+  phantomMisdirect?: boolean;
+  roninCut?: boolean;
+  roninCounter?: boolean;
   healingScale?: number;
   voltRelease?: number;
   bubblePop?: boolean;
@@ -343,5 +364,5 @@ export type BehaviorContext = {
   ctx: CanvasRenderingContext2D;
 };
 
-export type BehaviorHook = 'wallHit'|'geometryHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawBack'|'drawFront';
+export type BehaviorHook = 'wallHit'|'geometryHit'|'modifyOutgoing'|'dealHit'|'draw'|'tick'|'modifyIncoming'|'takeHit'|'beforeMove'|'drawFloor'|'drawBack'|'drawFront';
 export type Behavior = Partial<Record<BehaviorHook,(context:BehaviorContext)=>void>>;

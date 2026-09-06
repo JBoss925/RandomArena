@@ -22,6 +22,7 @@ export function simulateMatch(leftFighter:Fighter,rightFighter:Fighter,seed:stri
     sim.ticks++;
     for(const echo of sim.echoes){echo.frames--;if(echo.frames===0){const event:CombatEvent={damage:echo.damage,force:echo.damage,echo:true,ability:true,damageType:'echo'};const context={...ctx(sim,echo.attacker,event),rival:echo.attacker};runBehaviorHook(echo.victim,'modifyIncoming',context);applyDamage(echo.victim,event.damage,event.damageType);runBehaviorHook(echo.victim,'takeHit',context);}}
     sim.echoes=sim.echoes.filter(e=>e.frames>0);
+    for(const ball of sim.balls){ball.tickStartX=ball.x;ball.tickStartY=ball.y;}
     for(const ball of sim.balls){
       ball.cooldown=Math.max(0,ball.cooldown-1);ball.weaponCooldown=Math.max(0,ball.weaponCooldown-1);ball.weaponWorldCooldown=Math.max(0,ball.weaponWorldCooldown-1);ball.fireCooldown=Math.max(0,ball.fireCooldown-1);ball.stunned=Math.max(0,ball.stunned-1);ball.flash=Math.max(0,ball.flash-1);
       if(ball.burn>0){ball.burn--;if(ball.burn%12===0)applyDamage(ball,burnDamagePerTick(ball.burnStacks||1),'burn');if(!ball.burn)ball.burnStacks=0;}

@@ -34,10 +34,10 @@ for(const candidate of fighters){
     if(!/\d/.test(item.value))assert.match(item.value,/^(?:Permanent|Heavy direct hit|Each direct hit)$/,`${candidate.id} has a nonnumeric block that belongs in its description`);
   }
 }
-for(const [behavior,status] of [['afterburn','Burn'],['venom','Poison']] as const){
+for(const [behavior,status,duration] of [['afterburn','Burn','Burn duration'],['venom','Poison','Poison duration'],['fieldAlchemy','Acid Pool','Pool duration']] as const){
   const candidate=fighters.find(item=>item.behaviors.includes(behavior));assert.ok(candidate);
   assert.ok(candidate.specs.some(item=>item.label===`${status} damage`&&/HP\/s/.test(item.value)),`${candidate.id} must disclose ${status} damage over time`);
-  assert.ok(candidate.specs.some(item=>item.label===`${status} duration`),`${candidate.id} must disclose ${status} duration`);
+  assert.ok(candidate.specs.some(item=>item.label===duration),`${candidate.id} must disclose ${status} duration`);
 }
 assert.deepEqual(fighter('gatekeeper').specs.map(item=>item.label),['Portal interval','Crosscut window','Crosscut bonus damage','Collapse trigger'],'Gatekeeper blocks should contain quantified player-facing facts only');
 for(const id of ['corsair','dynamo','hourglass']){
@@ -54,6 +54,15 @@ for(const id of ['gatekeeper','conductor','matryoshka']){
   assert.deepEqual(first,simulateMatch(fighter(id),fighter('anchor'),seed),`${id} must replay its full attack cycle deterministically`);
   const phases:Record<string,string[]>={gatekeeper:['PORTAL!','LINKED!','WARP!','CROSSCUT!'],conductor:['PYLON!','OVERCHARGE!','ARC!','BURNOUT!'],matryoshka:['HAMMER BLOW!','SHELL BREAK!','TWIN SLASH!','CORE EXPOSED!','MELTDOWN!']};
   for(const phase of phases[id])assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
+}
+for(const [id,opponent,seed,phases] of [
+  ['phantom','anchor','legend-phantom',['AFTERIMAGE!','ECHO STRIKE!','MISDIRECT!']],
+  ['alchemist','anchor','cycle-alchemist-3',['ACID FLASK!','TONIC FLASK!','CATALYST FLASK!','ACID REACTION!']],
+  ['ronin','volt','ronin-full-volt-244',['FOCUS!','COUNTER!','COUNTER CUT!','FINAL FOCUS!','FINAL CUT!']],
+] as const){
+  const first=simulateMatch(fighter(id),fighter(opponent),seed);
+  assert.deepEqual(first,simulateMatch(fighter(id),fighter(opponent),seed),`${id} must replay its full attack cycle deterministically`);
+  for(const phase of phases)assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
 }
 const boxer=makeBall('dynamo','left'),boxerTarget=makeBall('brick','right');
 const dynamoInfo=fighter('dynamo');

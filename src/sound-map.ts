@@ -18,6 +18,15 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  phantomSpawn:{file:'/audio/teleport.mp3',volume:.25,rate:1.65,cooldownMs:150},
+  phantomStrike:{file:'/audio/teleport.mp3',volume:.34,rate:.92,cooldownMs:100},
+  flaskThrow:{volume:.16,rate:1,synth:'whoosh',cooldownMs:100},
+  flaskBreak:{file:'/audio/glass-tick.ogg',volume:.36,rate:.78,variance:.08,cooldownMs:85},
+  acidSizzle:{volume:.15,rate:1,synth:'drain',cooldownMs:240},
+  catalystBurst:{file:'/audio/shotgun-fire.mp3',volume:.38,rate:1.28,cooldownMs:160},
+  roninFocus:{file:'/audio/lance-whoosh.mp3',volume:.2,rate:1.65,cooldownMs:180},
+  roninCut:{file:'/audio/lance-hit.mp3',volume:.43,rate:1.18,variance:.05,cooldownMs:90},
+  roninCounter:{file:'/audio/metal-tap.ogg',volume:.35,rate:1.4,cooldownMs:100},
   portalOpen:{file:'/audio/teleport.mp3',volume:.32,rate:1.1,cooldownMs:170},
   portalTravel:{file:'/audio/teleport.mp3',volume:.38,rate:1.45,cooldownMs:90},
   portalCollapse:{file:'/audio/laser-fire.mp3',volume:.4,rate:.62,cooldownMs:220},

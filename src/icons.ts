@@ -1,6 +1,9 @@
 const wrap = (body:string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#151515" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 export const fighterIcons:Record<string,string> = {
+  phantom: wrap('<path fill="#fff" d="M12 29C12 13 20 6 32 6s20 7 20 23v25l-9-6-6 7-6-7-7 7-5-8-7 7Z"/><path d="M20 28c4-5 8-5 12 0 4-5 8-5 12 0M25 39c5 3 9 3 14 0"/>'),
+  alchemist: wrap('<path fill="#fff" d="M24 6h16M27 6v17L13 49c-3 6 1 9 7 9h24c6 0 10-3 7-9L37 23V6"/><path d="M20 43h25M23 35h18"/><circle cx="29" cy="48" r="3"/><circle cx="38" cy="40" r="2"/>'),
+  ronin: wrap('<path fill="#fff" d="M10 34c2-17 10-27 22-27s20 10 22 27l-8 20H18Z"/><path d="M10 34h44M20 27h24M32 7v27M17 46h30M8 57 55 10"/>'),
   gatekeeper: wrap('<ellipse fill="#fff" cx="19" cy="32" rx="11" ry="24"/><ellipse fill="#fff" cx="47" cy="32" rx="9" ry="19"/><path d="m26 20 9 7-9 7m12 10-9-7 9-7"/>'),
   conductor: wrap('<circle fill="#fff" cx="13" cy="48" r="7"/><circle fill="#fff" cx="51" cy="48" r="7"/><circle fill="#fff" cx="32" cy="13" r="7"/><path d="M17 42 28 19m8 0 11 23M20 48h24M32 25l-6 11h9l-5 12"/>'),
   matryoshka: wrap('<path fill="#fff" d="M21 25c-9 8-12 27-8 32h38c4-5 1-24-8-32 2-13-3-20-11-20s-13 7-11 20Z"/><circle cx="32" cy="19" r="7"/><path d="M21 38c7 5 15 5 22 0M26 18h1m10 0h1M28 25c3 2 5 2 8 0"/>'),

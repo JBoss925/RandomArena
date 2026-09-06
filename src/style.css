@@ -170,6 +170,7 @@ canvas { width: 100%; height: auto; display: block; aspect-ratio: 1; }
 .hp-damage-segment { position: absolute; top: 0; bottom: 0; background: #ff3d2e; }
 .hp-damage-segment[data-damage="burn"] { background: #ff7a1a; }
 .hp-damage-segment[data-damage="poison"] { background: #245c2a; }
+.hp-damage-segment[data-damage="acid"] { background: #76a832; }
 .hp-damage-segment[data-damage="ice"] { background: #7bdff2; }
 .hp-damage-segment[data-damage="electric"] { background: #d9ef00; }
 .hp-damage-segment[data-damage="explosive"] { background: #ff9d24; }

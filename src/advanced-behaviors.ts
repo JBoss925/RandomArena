@@ -1,5 +1,6 @@
 import { applyDamage } from "./damage.js";
 import { epicBehaviors } from "./epic-behaviors.js";
+import { legendBehaviors } from "./legend-behaviors.js";
 import type { Behavior, BehaviorContext, CombatEvent, Point } from "./types.js";
 
 type Dispatch = (
@@ -80,6 +81,7 @@ export function advancedBehaviors(
     c.ctx.restore();
   };
   return {
+    ...legendBehaviors(dispatch),
     ...epicBehaviors(dispatch),
     crescentRaider: {
       tick(c) {
