@@ -31,7 +31,7 @@ for(const candidate of fighters){
     assert.doesNotMatch(item.value,/\b(?:reduction|healing|duration|interval|recharge)\b/i,`${candidate.id} must keep the stat name in the label, not the value`);
     if(item.icon==='rotate')assert.match(item.value,/^\d+(?:\.\d+)? seconds\/spin$/,`${candidate.id} rotations must use seconds/spin`);
     if(item.icon==='clock'&&item.value!=='Permanent')assert.match(item.value,/seconds?/,`${candidate.id} timings must be expressed in seconds`);
-    if(!/\d/.test(item.value))assert.match(item.value,/^(?:Permanent|Heavy direct hit|Each direct hit)$/,`${candidate.id} has a nonnumeric block that belongs in its description`);
+    if(!/\d/.test(item.value))assert.match(item.value,/^(?:Permanent|Heavy direct hit|Each direct hit|Once per fight)$/,`${candidate.id} has a nonnumeric block that belongs in its description`);
   }
 }
 for(const [behavior,status,duration] of [['afterburn','Burn','Burn duration'],['venom','Poison','Poison duration'],['fieldAlchemy','Acid Pool','Pool duration']] as const){
@@ -74,6 +74,29 @@ for(const [id,seed,phases] of [
   assert.deepEqual(first,simulateMatch(candidate,fighter('anchor'),seed),`${id} must replay its complete character loop deterministically`);
   for(const phase of phases)assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
 }
+for(const [id,seed,phases] of [
+  ['neon','new-neon-0',['SPOTLIGHT!','LIGHT SHOW!','ENCORE!']],
+  ['shogun','new-shogun-0',['DATA BLADE!','ANCHOR SET!','BLINK!','PHASE CUT!']],
+  ['capo','new-capo-38',['INTERCEPT!','RETALIATION!']],
+] as const){
+  const candidate=fighter(id),first=simulateMatch(candidate,fighter('anchor'),seed);
+  assert.ok(candidate.specs.length<=5,`${id} must stay at or below the Spider-sized info-card complexity ceiling`);
+  assert.deepEqual(first,simulateMatch(candidate,fighter('anchor'),seed),`${id} must replay its complete character loop deterministically`);
+  for(const phase of phases)assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
+  if(id==='neon')assert.ok(first.events['LIGHT SHOW!']>1,'Neon should repeat Light Show throughout a long fight');
+}
+for(const [id,terms,labels] of [
+  ['neon',['Spotlight','Wind Up','Light Show','Encore'],['Wind Up duration','Light Show duration','Encore damage','Encore shield penetration','Light Show recovery']],
+  ['shogun',['Data Blade','Anchor','Blinks','Phase Cut'],['Anchor warning','Phase Cut bonus damage','Phase Cut shield penetration','Phase Cut recovery']],
+  ['capo',['Enforcer','Intercept','Retaliation'],['Intercept damage block','Retaliation damage','Enforcer recovery']],
+] as const){
+  const info=fighter(id);for(const term of terms)assert.ok(info.desc.includes(term),`${id} should explain ${term}`);assert.deepEqual(info.specs.map(item=>item.label),labels,`${id} should use one consistent move vocabulary`);
+}
+const capo=makeBall('capo','left'),capoTarget=makeBall('anchor','right'),intercepted:CombatEvent={damage:10,force:10};
+runBehaviorHook(capo,'modifyIncoming',{rival:capoTarget,event:intercepted});
+assert.equal(intercepted.damage,4,'Intercept should block a fixed 6 HP without erasing the rest of a heavy hit');
+assert.equal(intercepted.capoIntercept,true,'Intercept should arm its visible Retaliation');
+assert.equal(capo.enforcerCooldown,240,'the Enforcer should leave Capo exposed for its full recovery');
 const ascendant=makeBall('ascendant','left'),ascendantTarget=makeBall('anchor','right'),firstRadius=ascendant.radius;
 Object.assign(ascendant,{hp:-4,burn:20,burnStacks:2,poisonStacks:3,stunned:8});
 runBehaviorHook(ascendant,'beforeOutcome',{rival:ascendantTarget,showImpact:()=>{},emitParticles:()=>{},playSound:()=>{}});

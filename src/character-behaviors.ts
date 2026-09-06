@@ -1,9 +1,26 @@
-import type {Behavior,BehaviorContext} from './types.js';
+import {applyDamage} from './damage.js';
+import type {Ball,Behavior,BehaviorContext,CombatEvent,Point} from './types.js';
 
 const pulse=(ball:BehaviorContext['ball'],name:string,frames:number):void=>{ball.visualStates[name]=Math.max(ball.visualStates[name]??0,frames);};
-export const characterTuning={palmDamage:35,clinchDamage:18};
+type Dispatch=(ball:Ball,hook:'modifyIncoming'|'takeHit',context:Partial<BehaviorContext>)=>void;
+export const characterTuning={palmDamage:35,clinchDamage:18,laserDamage:10,phaseCutDamage:30,retaliationDamage:8};
 
-export function characterBehaviors():Record<string,Behavior>{
+function rayLength(origin:Point,angle:number,width:number,height:number):number{
+  const dx=Math.cos(angle),dy=Math.sin(angle),distances:number[]=[];
+  if(dx>0)distances.push((width-28-origin.x)/dx);else if(dx<0)distances.push((28-origin.x)/dx);
+  if(dy>0)distances.push((height-28-origin.y)/dy);else if(dy<0)distances.push((80-origin.y)/dy);
+  return Math.min(...distances.filter(distance=>distance>0));
+}
+
+function abilityStrike(c:BehaviorContext,dispatch:Dispatch,damage:number,label:string,point:Point,type:CombatEvent['damageType']='physical',eventExtras:Partial<CombatEvent>={}):void{
+  const {ball,rival,sim}=c,before={left:sim.balls[0].hp,right:sim.balls[1].hp};
+  const event:CombatEvent={force:damage,damage:damage*ball.f.power,ability:true,damageType:type,...eventExtras};
+  ball.hits++;rival.incoming++;dispatch(rival,'modifyIncoming',{...c,rival:ball,event});applyDamage(rival,event.damage,event.damageType);dispatch(rival,'takeHit',{...c,rival:ball,event});
+  sim.lastExchange={tick:sim.ticks,source:label,before,after:{left:sim.balls[0].hp,right:sim.balls[1].hp},damageTaken:{left:before.left-sim.balls[0].hp,right:before.right-sim.balls[1].hp}};
+  rival.flash=9;c.showImpact(label,point);
+}
+
+export function characterBehaviors(dispatch:Dispatch):Record<string,Behavior>{
   return{
     stillMind:{
       tick(c){
@@ -130,6 +147,76 @@ export function characterBehaviors():Record<string,Behavior>{
       drawBack({ball,ctx}){
         const state=ball.luchaState;if(!state)return;
         ctx.save();ctx.globalAlpha=.62;ctx.strokeStyle=ball.f.accent;ctx.lineWidth=6;ctx.setLineDash([12,7]);ctx.beginPath();ctx.arc(state.cx,state.cy,(ball.radius*1.35),0,Math.PI*2);ctx.stroke();ctx.restore();
+      },
+    },
+    spotlightSweep:{
+      tick(c){
+        const {ball,rival,random}=c,state=ball.neonState;
+        if(!state){
+          if(ball.frozen||ball.stunned)return;
+          ball.neonCooldown??=75+Math.floor(random()*61);
+          if(--ball.neonCooldown>0)return;
+          ball.neonStoredVx=ball.vx;ball.neonStoredVy=ball.vy;ball.vx=ball.vy=0;ball.neonState={phase:'charge',frames:60,angle:Math.atan2(rival.y-ball.y,rival.x-ball.x),direction:random()<.5?-1:1,hit:false};
+          pulse(ball,'spotlight',60);c.showImpact('SPOTLIGHT!',ball);c.emitParticles(ball,{count:18,color:ball.f.accent,speed:140,gravity:-40,kind:'star',size:8});c.playSound('spotlight');return;
+        }
+        ball.vx=ball.vy=0;ball.stunned=2;state.frames--;
+        if(state.phase==='charge'){
+          state.angle=Math.atan2(rival.y-ball.y,rival.x-ball.x);
+          if(state.frames<=0){state.phase='sweep';state.frames=54;state.angle-=state.direction*1.2;pulse(ball,'laserSweep',54);c.showImpact('LIGHT SHOW!',ball);c.playSound('laserSweep');}
+          return;
+        }
+        state.angle+=state.direction*(2.4/54);
+        const dx=rival.x-ball.x,dy=rival.y-ball.y,ux=Math.cos(state.angle),uy=Math.sin(state.angle),along=dx*ux+dy*uy,across=Math.abs(dx*uy-dy*ux);
+        if(!state.hit&&along>0&&across<rival.radius+8){state.hit=true;const point={x:ball.x+ux*along,y:ball.y+uy*along};abilityStrike(c,dispatch,characterTuning.laserDamage,'ENCORE!',point,'electric',{shieldPenetration:.2});pulse(rival,'laserHit',24);c.emitParticles(point,{count:28,color:ball.f.accent,speed:430,gravity:0,kind:'ray',size:11});c.playSound('laserHit');}
+        if(state.frames>0)return;
+        ball.neonState=undefined;ball.neonCooldown=180;ball.stunned=0;const vx=ball.neonStoredVx??0,vy=ball.neonStoredVy??0,speed=Math.hypot(vx,vy)||620,angle=Math.atan2(vy,vx);ball.vx=Math.cos(angle)*speed;ball.vy=Math.sin(angle)*speed;
+      },
+      modifyOutgoing({ball,event}){if(ball.neonState)event.damage=0;},
+      drawBack({ball,ctx,sim}){
+        const state=ball.neonState;if(!state)return;const length=rayLength(ball,state.angle,sim.width,sim.height),endX=ball.x+Math.cos(state.angle)*length,endY=ball.y+Math.sin(state.angle)*length;
+        ctx.save();ctx.strokeStyle=state.phase==='charge'?'#ffea62':ball.f.accent;ctx.globalAlpha=state.phase==='charge'?.28:.86;ctx.lineWidth=state.phase==='charge'?3:13;ctx.setLineDash(state.phase==='charge'?[10,10]:[]);ctx.shadowColor=ball.f.accent;ctx.shadowBlur=state.phase==='charge'?8:22;ctx.beginPath();ctx.moveTo(ball.x,ball.y);ctx.lineTo(endX,endY);ctx.stroke();ctx.restore();
+        ctx.save();ctx.translate(ball.x,ball.y);ctx.rotate(-sim.ticks*.025);ctx.strokeStyle='#ffea62';ctx.globalAlpha=.65;ctx.lineWidth=4;for(let i=0;i<8;i++){ctx.rotate(Math.PI/4);ctx.beginPath();ctx.moveTo(ball.radius+12,0);ctx.lineTo(ball.radius+25+(state.phase==='charge'?(60-state.frames)*.35:22),0);ctx.stroke();}ctx.restore();
+      },
+      drawFront({ball,ctx,sim}){if(!ball.neonState)return;ctx.save();ctx.fillStyle='rgba(255,234,98,.22)';ctx.strokeStyle='#ffea62';ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(ball.x,ball.y-ball.radius-20,ball.radius*1.45,10+Math.sin(sim.ticks*.2)*2,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();},
+    },
+    dataBlade:{
+      tick(c){
+        const {ball,rival,sim,random}=c;
+        if((ball.phaseCutFrames??0)>0){ball.phaseCutFrames!--;pulse(ball,'phaseCut',3);if(!ball.phaseCutFrames){ball.phaseCutReady=false;ball.dataBladeCooldown=165;}return;}
+        const blade=ball.dataBlade;
+        if(!blade){
+          if(ball.frozen||ball.stunned)return;
+          ball.dataBladeCooldown??=90+Math.floor(random()*61);if(--ball.dataBladeCooldown>0)return;
+          const angle=Math.atan2(rival.y-ball.y,rival.x-ball.x);ball.dataBlade={x:ball.x,y:ball.y,vx:Math.cos(angle)*820,vy:Math.sin(angle)*820,phase:'flying',frames:0,nx:0,ny:0,rotation:angle};
+          c.showImpact('DATA BLADE!',ball);c.emitParticles(ball,{count:12,color:ball.f.accent,speed:190,gravity:0,kind:'pixel',size:7});c.playSound('dataBlade');return;
+        }
+        if(blade.phase==='flying'){
+          blade.x+=blade.vx/60;blade.y+=blade.vy/60;blade.rotation+=.18;
+          if(blade.x<=28||blade.x>=sim.width-28||blade.y<=80||blade.y>=sim.height-28){
+            if(blade.x<=28){blade.x=28;blade.nx=1;}else if(blade.x>=sim.width-28){blade.x=sim.width-28;blade.nx=-1;}if(blade.y<=80){blade.y=80;blade.ny=1;}else if(blade.y>=sim.height-28){blade.y=sim.height-28;blade.ny=-1;}blade.phase='anchored';blade.frames=36;c.showImpact('ANCHOR SET!',blade);c.emitParticles(blade,{count:16,color:ball.f.accent,speed:230,gravity:0,kind:'pixel',size:7});c.playSound('bladeAnchor');
+          }
+          return;
+        }
+        if(--blade.frames>0)return;
+        const old={x:ball.x,y:ball.y};ball.x=blade.x+blade.nx*(ball.radius+5);ball.y=blade.y+blade.ny*(ball.radius+5);const angle=Math.atan2(rival.y-ball.y,rival.x-ball.x);ball.vx=Math.cos(angle)*1100;ball.vy=Math.sin(angle)*1100;ball.phaseCutFrames=30;ball.phaseCutReady=true;ball.dataBlade=undefined;ball.cooldown=0;
+        c.showImpact('BLINK!',ball);c.emitParticles(old,{count:20,color:ball.f.accent,speed:260,gravity:0,kind:'pixel',size:8});c.emitParticles(ball,{count:26,color:ball.f.accent,speed:360,gravity:0,kind:'slash',size:9});c.playSound('phaseBlink');
+      },
+      modifyOutgoing({ball,event}){if(!ball.phaseCutReady||event.weapon||event.projectile||event.ability)return;event.damage+=characterTuning.phaseCutDamage*ball.f.power;event.shieldPenetration=.35;event.parryPenetration=.5;event.ability=true;event.phaseCut=true;},
+      dealHit(c){if(!c.event.phaseCut)return;c.ball.phaseCutReady=false;c.ball.phaseCutFrames=0;c.ball.dataBladeCooldown=165;pulse(c.rival,'phaseCutHit',24);c.showImpact('PHASE CUT!',c.rival);c.emitParticles(c.rival,{count:30,color:c.ball.f.accent,speed:520,gravity:0,kind:'slash',size:11});c.playSound('phaseCut');},
+      drawBack({ball,ctx}){
+        const blade=ball.dataBlade;if(!blade)return;ctx.save();if(blade.phase==='anchored'){ctx.strokeStyle=ball.f.accent;ctx.globalAlpha=.35;ctx.lineWidth=3;ctx.setLineDash([8,9]);ctx.beginPath();ctx.moveTo(blade.x,blade.y);ctx.lineTo(ball.x,ball.y);ctx.stroke();ctx.setLineDash([]);ctx.beginPath();ctx.arc(blade.x,blade.y,16+Math.sin(blade.frames*.35)*4,0,Math.PI*2);ctx.stroke();}ctx.translate(blade.x,blade.y);ctx.rotate(blade.rotation);ctx.fillStyle=ball.f.accent;ctx.strokeStyle='#151515';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(7,0);ctx.lineTo(0,14);ctx.lineTo(-7,0);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+      },
+      drawFront({ball,ctx}){if(!(ball.phaseCutFrames&&ball.phaseCutFrames>0))return;const speed=Math.hypot(ball.vx,ball.vy)||1,ux=ball.vx/speed,uy=ball.vy/speed;ctx.save();ctx.strokeStyle=ball.f.accent;ctx.globalAlpha=.7;ctx.lineWidth=9;ctx.lineCap='round';for(let i=1;i<=3;i++){ctx.beginPath();ctx.moveTo(ball.x-ux*(ball.radius+i*15)-uy*i*5,ball.y-uy*(ball.radius+i*15)+ux*i*5);ctx.lineTo(ball.x-ux*(ball.radius+i*28)+uy*i*5,ball.y-uy*(ball.radius+i*28)-ux*i*5);ctx.stroke();}ctx.restore();},
+    },
+    loyalEnforcer:{
+      tick(c){const {ball}=c;ball.enforcerAngle=(ball.enforcerAngle??0)+.065;if((ball.enforcerCooldown??0)>0){ball.enforcerCooldown!--;if(!ball.enforcerCooldown){pulse(ball,'enforcerReturn',30);c.emitParticles(ball,{count:18,color:ball.f.accent,speed:180,gravity:0,kind:'ring',size:8});c.playSound('enforcerReturn');}}},
+      modifyIncoming({ball,event}){if((ball.enforcerCooldown??0)>0||event.damage<=0)return;ball.enforcerCooldown=240;event.blockedDamage=Math.min(6,event.damage);event.damage=Math.max(0,event.damage-6);event.capoIntercept=true;},
+      takeHit(c){
+        if(!c.event.capoIntercept)return;const {ball,rival}=c,dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1;ball.enforcerAngle=Math.atan2(dy,dx);rival.vx=dx/d*760;rival.vy=dy/d*760;rival.stunned=Math.max(rival.stunned,8);pulse(ball,'intercept',24);pulse(rival,'retaliation',20);c.showImpact('INTERCEPT!',ball);c.emitParticles(ball,{count:20,color:ball.f.accent,speed:320,gravity:180,kind:'star',size:9});c.playSound('intercept');abilityStrike(c,dispatch,characterTuning.retaliationDamage,'RETALIATION!',rival,'physical',{shieldPenetration:.25});c.playSound('retaliation');
+      },
+      drawBack({ball,ctx}){const angle=ball.enforcerAngle??0,r=ball.radius+31;ctx.save();ctx.strokeStyle=ball.f.accent;ctx.globalAlpha=(ball.enforcerCooldown??0)>0?.18:.48;ctx.lineWidth=3;ctx.setLineDash([5,7]);ctx.beginPath();ctx.arc(ball.x,ball.y,r,0,Math.PI*2);ctx.stroke();ctx.restore();},
+      drawFront({ball,ctx}){
+        if((ball.enforcerCooldown??0)>0)return;const angle=ball.enforcerAngle??0,r=ball.radius+31,x=ball.x+Math.cos(angle)*r,y=ball.y+Math.sin(angle)*r;ctx.save();ctx.translate(x,y);ctx.fillStyle='#242128';ctx.strokeStyle='#151515';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=ball.f.accent;ctx.fillRect(-7,-2,14,4);ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(0,2);ctx.lineTo(-4,10);ctx.lineTo(4,10);ctx.closePath();ctx.fill();ctx.restore();
       },
     },
   };

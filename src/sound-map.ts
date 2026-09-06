@@ -18,6 +18,16 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  spotlight:{file:'/audio/goldie-coin.mp3',volume:.3,rate:1.45,cooldownMs:180},
+  laserSweep:{file:'/audio/laser-fire.mp3',volume:.4,rate:.68,cooldownMs:300},
+  laserHit:{file:'/audio/laser-fire.mp3',volume:.48,rate:1.25,cooldownMs:120},
+  dataBlade:{file:'/audio/lance-whoosh.mp3',volume:.3,rate:1.35,cooldownMs:120},
+  bladeAnchor:{file:'/audio/metal-tap.ogg',volume:.38,rate:1.18,cooldownMs:120},
+  phaseBlink:{file:'/audio/teleport.mp3',volume:.4,rate:1.35,cooldownMs:150},
+  phaseCut:{file:'/audio/lance-hit.mp3',volume:.52,rate:1.08,cooldownMs:100},
+  intercept:{file:'/audio/metal-impact.mp3',volume:.46,rate:.85,cooldownMs:150},
+  retaliation:{file:'/audio/soft-hit.ogg',volume:.62,rate:.72,cooldownMs:120},
+  enforcerReturn:{file:'/audio/mechanical-clank.mp3',volume:.24,rate:1.3,cooldownMs:180},
   meditate:{file:'/audio/healing.mp3',volume:.2,rate:.72,cooldownMs:220},
   serenityWard:{file:'/audio/bubble-pop.mp3',volume:.48,rate:.72,cooldownMs:180},
   meditationBreak:{file:'/audio/glass-tick.ogg',volume:.34,rate:.82,cooldownMs:140},

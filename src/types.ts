@@ -5,7 +5,7 @@ export type Material = 'plastic'|'metal'|'stone'|'wood'|'rubber'|'glass'|'energy
 export type DamageType = 'physical'|'burn'|'poison'|'acid'|'ice'|'electric'|'explosive'|'echo'|'time'|'hazard'|'fatigue';
 export type HealthDamageReceipt = { sequence:number; from:number; to:number; amount:number; type:DamageType };
 export type HealthHealingReceipt = { sequence:number; from:number; to:number; amount:number };
-export type SoundCue = 'meditate'|'serenityWard'|'meditationBreak'|'palmStrike'|'ascend'|'clinch'|'ringToss'|'phantomSpawn'|'phantomStrike'|'flaskThrow'|'flaskBreak'|'acidSizzle'|'catalystBurst'|'roninFocus'|'roninCut'|'roninCounter'|'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
+export type SoundCue = 'spotlight'|'laserSweep'|'laserHit'|'dataBlade'|'bladeAnchor'|'phaseBlink'|'phaseCut'|'intercept'|'retaliation'|'enforcerReturn'|'meditate'|'serenityWard'|'meditationBreak'|'palmStrike'|'ascend'|'clinch'|'ringToss'|'phantomSpawn'|'phantomStrike'|'flaskThrow'|'flaskBreak'|'acidSizzle'|'catalystBurst'|'roninFocus'|'roninCut'|'roninCounter'|'portalOpen'|'portalTravel'|'portalCollapse'|'pylonPlace'|'arcZap'|'shellBreak'|'coreBurst'|'crescentCast'|'crescentRecall'|'crescentHit'|'crescentCatch'|'rocketWindup'|'rocketPunch'|'rocketBurst'|'timeMark'|'timeRewind'|'bodyContact'|'wallContact'|'impactLight'|'impactHeavy'|'materialPlastic'|'materialWall'|'materialRubber'|'materialWood'|'materialStone'|'materialGlass'|'materialSoft'|'materialMetal'|'materialEnergy'|'armorBlock'|'armorBreak'|'bubblePop'|'freeze'|'iceShatter'|'fire'|'poison'|'teleport'|'heal'|'coin'|'jackpot'|'electric'|'shotgun'|'sniper'|'sword'|'bat'|'lanceCharge'|'lanceHit'|'grow'|'flail'|'magnetPull'|'magnetPush'|'droneLaunch'|'droneHit'|'webShot'|'webSwing'|'webImpact'|'webPerch'|'mineDeploy'|'explosion'|'grenade'|'shrapnel'|'root'|'echo'|'siphon'|'whoosh'|'rumble'|'pinball'|'success'|'failure';
 export type SoundCueOptions = {volume?:number;rate?:number};
 export type Point = { x: number; y: number };
 export type Bounds = { left: number; right: number; top: number; bottom: number };
@@ -81,6 +81,8 @@ export type AlchemyPool = Point&{kind:'acid'|'tonic';radius:number;frames:number
 export type RoninState = {phase:'focus'|'dash'|'recovery';frames:number;angle:number;hit:boolean;counter:boolean;final:boolean;startedTick:number};
 export type PalmRelease = {frames:number;dx:number;dy:number};
 export type LuchaState = {frames:number;cx:number;cy:number;angle:number;direction:1|-1};
+export type NeonState = {phase:'charge'|'sweep';frames:number;angle:number;direction:1|-1;hit:boolean};
+export type DataBlade = Point&{vx:number;vy:number;phase:'flying'|'anchored';frames:number;nx:number;ny:number;rotation:number};
 
 export type Ball = Point & {
   f: Fighter;
@@ -166,6 +168,16 @@ export type Ball = Point & {
   luchaCooldown?: number;
   luchaState?: LuchaState;
   luchaCaptured?: boolean;
+  neonCooldown?: number;
+  neonState?: NeonState;
+  neonStoredVx?: number;
+  neonStoredVy?: number;
+  dataBlade?: DataBlade;
+  dataBladeCooldown?: number;
+  phaseCutFrames?: number;
+  phaseCutReady?: boolean;
+  enforcerCooldown?: number;
+  enforcerAngle?: number;
   voltCharge?: number;
   armorPlates?: number;
   armorRepair?: number;
@@ -234,6 +246,8 @@ export type CombatEvent = {
   serenityReflect?: boolean;
   ascensionReject?: boolean;
   luchaClinch?: boolean;
+  phaseCut?: boolean;
+  capoIntercept?: boolean;
   healingScale?: number;
   voltRelease?: number;
   bubblePop?: boolean;

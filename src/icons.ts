@@ -1,6 +1,9 @@
 const wrap = (body:string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="#151515" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
 
 export const fighterIcons:Record<string,string> = {
+  neon: wrap('<path fill="#fff" d="m32 5 6 16 17 1-13 11 4 17-14-9-14 9 4-17L9 22l17-1Z"/><path d="M32 41v16M23 57h18M18 12l-7-5m35 5 7-5"/>'),
+  shogun: wrap('<path fill="#fff" d="M10 18 22 7h20l12 11-5 33-17 8-17-8Z"/><path d="m10 18 14 13-9 20m39-33L40 31l9 20M24 31h16M20 43l12-6 12 6M32 7v30"/><path fill="#151515" stroke="none" d="m17 24 12 5-9 5Zm30 0-12 5 9 5Z"/>'),
+  capo: wrap('<path fill="#fff" d="M10 25h44L44 12H20Z"/><path d="M5 25h54M19 35c8-6 18-6 26 0v20H19ZM26 35l6 9 6-9M32 44v13"/><path d="M22 20h20"/>'),
   stillpoint: wrap('<circle fill="#fff" cx="32" cy="32" r="25"/><path d="M17 28c5 4 10 4 14 0m2 0c4 4 9 4 14 0M23 42c6 4 12 4 18 0"/><circle fill="#151515" stroke="none" cx="32" cy="17" r="3"/>'),
   ascendant: wrap('<path fill="#fff" d="M32 5 40 20l17 3-12 12 3 18-16-8-16 8 3-18L7 23l17-3Z"/><path d="m11 49 12-15 9 11 8-17 13 21M32 5v14"/>'),
   luchador: wrap('<path fill="#fff" d="M10 12c14-8 30-8 44 0l-4 34-18 12-18-12Z"/><path d="m10 12 14 16-10 18m40-34L40 28l10 18M24 28h16M23 38l9 8 9-8"/><path fill="#151515" stroke="none" d="m17 23 11 4-8 6Zm30 0-11 4 8 6Z"/>'),

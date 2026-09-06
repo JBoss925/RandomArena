@@ -82,7 +82,7 @@ export function advancedBehaviors(
     c.ctx.restore();
   };
   return {
-    ...characterBehaviors(),
+    ...characterBehaviors(dispatch),
     ...legendBehaviors(dispatch),
     ...epicBehaviors(dispatch),
     crescentRaider: {

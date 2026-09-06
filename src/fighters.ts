@@ -59,6 +59,12 @@ fighters.push(
   {id:'luchador',name:'LUCHADOR',color:'#22a6a1',secondaryColor:'#f04f45',accent:'#ffe260',shineColor:'#9ce3df',speed:1.02,power:1,mass:.98,behaviors:['ringShowman'],ability:'THE MAIN EVENT',desc:'A fearless showman who makes every fight The Main Event. An ordinary Body Hit becomes a Clinch that spins both fighters around the ring, then ends with a Ring Toss that hurls them in opposite directions. After Ring Toss, Luchador must recover before starting another Clinch.',specs:[spec('damage','Clinch bonus damage','+18 HP'),spec('shield','Clinch shield penetration','25%'),spec('clock','Clinch duration','0.4 seconds'),spec('clock','Ring Toss recovery','2 seconds')]},
 );
 
+fighters.push(
+  {id:'neon',name:'NEON',color:'#ee3d9b',secondaryColor:'#342c78',accent:'#57f3ff',shineColor:'#f7b6db',speed:.96,power:1,mass:.96,behaviors:['spotlightSweep'],ability:'LIGHT SHOW',desc:'A dazzling arena idol who repeatedly turns the fight into a performance. Neon stops beneath a Spotlight and tracks the opponent during a visible Wind Up, then sweeps a laser across the arena. Catching the opponent in the beam lands one Encore before Neon begins preparing the next Light Show.',specs:[spec('clock','Wind Up duration','1 second'),spec('clock','Light Show duration','0.9 seconds'),spec('damage','Encore damage','10 HP'),spec('shield','Encore shield penetration','20%'),spec('clock','Light Show recovery','3 seconds')]},
+  {id:'shogun',name:'SHOGUN',color:'#202b52',accent:'#ff4f9a',shineColor:'#aeb7d1',speed:1.04,power:1,mass:.92,behaviors:['dataBlade'],ability:'PHASE CUT',desc:'A cyber-ninja who throws a Data Blade until it becomes an arena-wall Anchor. After a brief warning, Shogun Blinks to the Anchor and charges through the opponent’s last position. Connecting during the charge lands Phase Cut; a miss still commits Shogun to the full dash.',specs:[spec('clock','Anchor warning','0.6 seconds'),spec('damage','Phase Cut bonus damage','+30 HP'),spec('shield','Phase Cut shield penetration','35%'),spec('clock','Phase Cut recovery','2.75 seconds')]},
+  {id:'capo',name:'CAPO',color:'#322d35',accent:'#f0c45b',shineColor:'#aaa4ad',speed:.9,power:1,mass:1.04,behaviors:['loyalEnforcer'],ability:'LOYALTY PAYS',desc:'An unassuming boss shadowed by one orbiting Enforcer. While the Enforcer is ready, the next damaging hit triggers Intercept: it absorbs part of the blow, knocks the attacker away, and delivers Retaliation. Capo is exposed until the Enforcer returns.',specs:[spec('block','Intercept damage block','6 HP'),spec('damage','Retaliation damage','8 HP'),spec('clock','Enforcer recovery','4 seconds')]},
+);
+
 // Balance coefficients are kept separate from kit identity so mechanical tuning
 // never obscures the readable fantasy definitions above.
 const powerTuning:Record<string,number>={volt:.768,brick:.7,mint:.9083,goldie:1.0686,void:.7613,bubble:1.1287,moss:.8565,glitch:.9484,frost:.78,ember:.788,echo:.7947,rook:.601,comet:1.4159,static:.9283,anchor:.8014,orbit:1.0686,saber:.768,slugger:.6945,shotgun:1.2823,sniper:1.603,lance:1.15,grower:1.1488,flail:1.22,polar:1.32,mothership:.5,spider:.95,claymore:.9,cobra:1};
@@ -68,10 +74,13 @@ const weaponMaterials:Record<string,Material>={sword:'metal',bat:'wood',lance:'m
 Object.assign(powerTuning,{corsair:1,dynamo:1.25,hourglass:1.64,gatekeeper:1.4211,conductor:.8273,matryoshka:.84});
 Object.assign(powerTuning,{phantom:.96,alchemist:1.614,ronin:.98});
 Object.assign(powerTuning,{stillpoint:.83,ascendant:.9,luchador:.75});
+Object.assign(powerTuning,{neon:.92,shogun:.97,capo:.88});
 Object.assign(bodyDamageTuning,{gatekeeper:.38,conductor:.42,matryoshka:.35,phantom:.42,alchemist:.38,ronin:.12});
 Object.assign(bodyDamageTuning,{stillpoint:.6,ascendant:.4,luchador:.32});
+Object.assign(bodyDamageTuning,{neon:.65,shogun:.34,capo:.52});
 Object.assign(bodyMaterials,{gatekeeper:'energy',conductor:'metal',matryoshka:'wood',phantom:'energy',alchemist:'glass',ronin:'metal'});
 Object.assign(bodyMaterials,{stillpoint:'wood',ascendant:'stone',luchador:'rubber'});
+Object.assign(bodyMaterials,{neon:'energy',shogun:'metal',capo:'plastic'});
 bodyDamageTuning.dynamo=.12;
 fighters.find(f=>f.id==='dynamo')!.poisonDamageScale=1.5;
 for(const fighter of fighters){
@@ -92,6 +101,9 @@ for(const fighter of fighters){
     ronin:{'Draw Cut bonus damage':`+${displayNumber(24*fighter.power)} HP`,'Counter Cut bonus damage':`+${displayNumber(30*fighter.power)} HP`,'Counter Cut speed bonus':`Up to +${displayNumber(45*fighter.power)} HP`,'Heavy target cut bonus':`+${displayNumber(2*fighter.power)} HP`,'Final Cut bonus damage':`+${displayNumber(42*fighter.power)} HP`},
     stillpoint:{'Palm Strike bonus damage':'+35 HP'},
     luchador:{'Clinch bonus damage':`+${displayNumber(18*fighter.power)} HP`},
+    neon:{'Encore damage':`${displayNumber(10*fighter.power)} HP`},
+    shogun:{'Phase Cut bonus damage':`+${displayNumber(30*fighter.power)} HP`},
+    capo:{'Retaliation damage':`${displayNumber(8*fighter.power)} HP`},
   };
   for(const item of fighter.specs){const value=damageSpecs[fighter.id]?.[item.label];if(value)item.value=value;}
 }

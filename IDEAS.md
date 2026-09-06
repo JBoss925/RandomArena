@@ -26,19 +26,19 @@ A mythic guardian with one dramatic Ascension. Its heavy stone body dies once, s
 
 A masked wrestling hero who treats every fight as the main event. A clean collision becomes a Clinch, a visible spin, and a Ring Toss that sends both fighters in opposite directions. The spectacle is the mechanic.
 
-## High-priority concepts
-
 ### Neon — the arena idol
 
-A glamorous stage performer who plants itself, charges under a spotlight, and sweeps one bright laser across the arena. The opponent can dodge the telegraphed beam; Neon wins by turning the ring into its stage.
+A glamorous stage performer who repeatedly stops beneath a Spotlight, telegraphs a sweeping Light Show, and earns one damaging Encore by catching the opponent in the beam.
 
 ### Shogun — the cyber ninja
 
-A neon assassin throws one data blade into arena geometry, then teleports to it and performs a perpendicular slash. The embedded blade clearly forecasts where the attack will originate.
+A neon assassin whose thrown Data Blade becomes an Anchor. Shogun Blinks to it, then commits to one high-speed Phase Cut through the opponent’s last position.
 
 ### Capo — the crime boss
 
-A physically unimpressive boss protected by one loyal enforcer. The enforcer intercepts a major hit, retaliates against the attacker, and then leaves the boss exposed while it recovers.
+A physically unimpressive boss protected by one orbiting Enforcer. The Enforcer uses Intercept against a major hit, delivers Retaliation, and then leaves Capo exposed while it recovers.
+
+## High-priority concepts
 
 ### Crystal — the unstable prodigy
 
