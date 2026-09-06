@@ -138,7 +138,7 @@ export function characterBehaviors(dispatch:Dispatch):Record<string,Behavior>{
         if(state.frames>0)return;
         const tx=-Math.sin(state.angle)*state.direction,ty=Math.cos(state.angle)*state.direction;
         rival.vx=tx*800;rival.vy=ty*800;ball.vx=-tx*680;ball.vy=-ty*680;ball.stunned=rival.stunned=0;rival.luchaCaptured=false;ball.luchaState=undefined;ball.luchaCooldown=120;
-        pulse(ball,'ringToss',28);pulse(rival,'ringToss',28);c.showImpact('RING TOSS!',rival);c.emitParticles(rival,{count:28,color:ball.f.accent,speed:460,gravity:260,kind:'star',size:10});c.playSound('ringToss');
+        pulse(ball,'ringToss',28);pulse(rival,'ringToss',28);c.showImpact('RING TOSS!',rival);c.emitParticles(rival,{count:28,color:ball.f.accent,speed:460,gravity:260,kind:'confetti',size:10});c.playSound('ringToss');
       },
       modifyOutgoing({ball,event}){
         if((ball.luchaCooldown??0)>0||ball.luchaState||ball.luchaCaptured||event.weapon||event.projectile||event.ability)return;
@@ -148,7 +148,7 @@ export function characterBehaviors(dispatch:Dispatch):Record<string,Behavior>{
         const {ball,rival,event}=c;if(!event.luchaClinch||ball.luchaState||ball.luchaCaptured||rival.luchaCaptured)return;
         const cx=(ball.x+rival.x)/2,cy=(ball.y+rival.y)/2,angle=Math.atan2(ball.y-cy,ball.x-cx),direction:1|-1=ball.angularVelocity>=0?1:-1;
         ball.luchaState={frames:24,cx,cy,angle,direction};rival.luchaCaptured=true;ball.vx=ball.vy=rival.vx=rival.vy=0;ball.stunned=rival.stunned=2;ball.cooldown=rival.cooldown=12;
-        pulse(ball,'clinch',24);pulse(rival,'clinch',24);c.showImpact('CLINCH!',{x:cx,y:cy});c.emitParticles({x:cx,y:cy},{count:18,color:ball.f.accent,speed:240,gravity:220,kind:'star',size:8});c.playSound('clinch');
+        pulse(ball,'clinch',24);pulse(rival,'clinch',24);c.showImpact('CLINCH!',{x:cx,y:cy});c.emitParticles({x:cx,y:cy},{count:18,color:ball.f.accent,speed:240,gravity:220,kind:'confetti',size:8});c.playSound('clinch');
       },
       drawBack({ball,ctx}){
         const state=ball.luchaState;if(!state)return;
@@ -218,7 +218,7 @@ export function characterBehaviors(dispatch:Dispatch):Record<string,Behavior>{
       tick(c){const {ball}=c;ball.enforcerAngle=(ball.enforcerAngle??0)+.065;if((ball.enforcerCooldown??0)>0){ball.enforcerCooldown!--;if(!ball.enforcerCooldown){pulse(ball,'enforcerReturn',30);c.emitParticles(ball,{count:18,color:ball.f.accent,speed:180,gravity:0,kind:'ring',size:8});c.playSound('enforcerReturn');}}},
       modifyIncoming({ball,event}){if((ball.enforcerCooldown??0)>0||event.damage<=0)return;ball.enforcerCooldown=240;event.blockedDamage=Math.min(6,event.damage);event.damage=Math.max(0,event.damage-6);event.capoIntercept=true;},
       takeHit(c){
-        if(!c.event.capoIntercept)return;const {ball,rival}=c,dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1;ball.enforcerAngle=Math.atan2(dy,dx);rival.vx=dx/d*760;rival.vy=dy/d*760;rival.stunned=Math.max(rival.stunned,8);pulse(ball,'intercept',24);pulse(rival,'retaliation',20);c.showImpact('INTERCEPT!',ball);c.emitParticles(ball,{count:20,color:ball.f.accent,speed:320,gravity:180,kind:'star',size:9});c.playSound('intercept');abilityStrike(c,dispatch,characterTuning.retaliationDamage,'RETALIATION!',rival,'physical',{shieldPenetration:.25});c.playSound('retaliation');
+        if(!c.event.capoIntercept)return;const {ball,rival}=c,dx=rival.x-ball.x,dy=rival.y-ball.y,d=Math.hypot(dx,dy)||1;ball.enforcerAngle=Math.atan2(dy,dx);rival.vx=dx/d*760;rival.vy=dy/d*760;rival.stunned=Math.max(rival.stunned,8);pulse(ball,'intercept',24);pulse(rival,'retaliation',20);c.showImpact('INTERCEPT!',ball);c.emitParticles(ball,{count:20,color:ball.f.accent,speed:320,gravity:180,kind:'diamond',size:9});c.playSound('intercept');abilityStrike(c,dispatch,characterTuning.retaliationDamage,'RETALIATION!',rival,'physical',{shieldPenetration:.25});c.playSound('retaliation');
       },
       drawBack({ball,ctx}){const angle=ball.enforcerAngle??0,r=ball.radius+31;ctx.save();ctx.strokeStyle=ball.f.accent;ctx.globalAlpha=(ball.enforcerCooldown??0)>0?.18:.48;ctx.lineWidth=3;ctx.setLineDash([5,7]);ctx.beginPath();ctx.arc(ball.x,ball.y,r,0,Math.PI*2);ctx.stroke();ctx.restore();},
       drawFront({ball,ctx}){

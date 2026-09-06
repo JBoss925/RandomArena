@@ -1,6 +1,6 @@
 import type {SoundCue} from './types';
 
-export type SynthSound='rustle'|'whoosh'|'drain'|'rumble'|'ascend'|'musicTap'|'musicRise'|'musicBass';
+export type SynthSound='rustle'|'whoosh'|'drain'|'rumble'|'ascend'|'musicTap'|'musicRise'|'musicBass'|'electricArc'|'echoPulse'|'growthBloom'|'magnet'|'voidPulse'|'slotJackpot';
 export type SoundDefinition={
   /** Put a file in public/audio and reference it here as /audio/your-file.ext. */
   file?:string;
@@ -18,6 +18,7 @@ export type SoundDefinition={
 // This is the only mapping you need to edit when replacing or rebalancing sounds.
 // Missing/unloadable files automatically fall back to a short game-like beep.
 export const soundCues:Record<SoundCue,SoundDefinition>={
+  lastStand:{volume:.46,rate:1,synth:'rumble',cooldownMs:500},
   maestroTap:{volume:.38,rate:1,synth:'musicTap',cooldownMs:90},
   maestroCrescendo:{volume:.46,rate:1,synth:'musicRise',cooldownMs:90},
   bassDrop:{volume:.62,rate:1,synth:'musicBass',cooldownMs:160},
@@ -94,18 +95,18 @@ export const soundCues:Record<SoundCue,SoundDefinition>={
   teleport:{file:'/audio/teleport.mp3',volume:.32,rate:1.45,variance:.05,cooldownMs:180},
   heal:{file:'/audio/healing.mp3',volume:.22,rate:1.1,variance:.04,cooldownMs:260},
   coin:{file:'/audio/goldie-coin.mp3',volume:.75,rate:1,variance:.05,cooldownMs:70},
-  jackpot:{file:'/audio/goldie-jackpot.mp3',volume:.8,rate:1.05,variance:.02,cooldownMs:500},
-  electric:{file:'/audio/laser-fire.mp3',volume:.27,rate:1.75,variance:.12,cooldownMs:90},
+  jackpot:{volume:.82,rate:1,synth:'slotJackpot',cooldownMs:500},
+  electric:{volume:.34,rate:1,synth:'electricArc',cooldownMs:90},
   shotgun:{file:'/audio/shotgun-fire.mp3',volume:.95,rate:1,variance:.025,cooldownMs:140},
   sniper:{file:'/audio/laser-fire.mp3',volume:.58,rate:.58,variance:.02,cooldownMs:250},
   sword:{file:'/audio/metal-tap.ogg',volume:.28,rate:1.05,variance:.1,cooldownMs:80},
   bat:{file:'/audio/wood-knock.ogg',volume:.36,rate:.88,variance:.07,cooldownMs:75},
   lanceCharge:{file:'/audio/lance-whoosh.mp3',volume:.42,rate:.9,variance:.04,cooldownMs:180},
   lanceHit:{file:'/audio/lance-hit.mp3',volume:.58,rate:.78,variance:.05,cooldownMs:100},
-  grow:{file:'/audio/rubber-pop.ogg',volume:.3,rate:.68,variance:.08,cooldownMs:85},
+  grow:{volume:.34,rate:1,synth:'growthBloom',cooldownMs:85},
   flail:{file:'/audio/flail-rattle.mp3',volume:.38,rate:1.18,variance:.06,cooldownMs:150},
-  magnetPull:{file:'/audio/laser-fire.mp3',volume:.22,rate:1.9,variance:.04,cooldownMs:120},
-  magnetPush:{file:'/audio/laser-fire.mp3',volume:.38,rate:.72,variance:.04,cooldownMs:120},
+  magnetPull:{volume:.25,rate:1,synth:'magnet',cooldownMs:120},
+  magnetPush:{volume:.38,rate:1,synth:'magnet',cooldownMs:120},
   droneLaunch:{file:'/audio/laser-fire.mp3',volume:.28,rate:1.28,variance:.06,cooldownMs:120},
   droneHit:{file:'/audio/mechanical-clank.mp3',volume:.32,rate:1.22,variance:.06,cooldownMs:90},
   webShot:{file:'/audio/lance-whoosh.mp3',volume:.34,rate:1.45,variance:.08,cooldownMs:90},
@@ -117,8 +118,8 @@ export const soundCues:Record<SoundCue,SoundDefinition>={
   grenade:{file:'/audio/lance-whoosh.mp3',volume:.36,rate:1.12,variance:.05,cooldownMs:120},
   shrapnel:{file:'/audio/metal-tap.ogg',volume:.22,rate:1.32,variance:.13,cooldownMs:45},
   root:{volume:.2,rate:1,synth:'rustle',cooldownMs:160},
-  echo:{file:'/audio/teleport.mp3',volume:.15,rate:1.9,variance:.08,cooldownMs:90},
-  siphon:{volume:.16,rate:1,synth:'drain',cooldownMs:100},
+  echo:{volume:.28,rate:1,synth:'echoPulse',cooldownMs:90},
+  siphon:{volume:.2,rate:1,synth:'voidPulse',cooldownMs:100},
   whoosh:{volume:.13,rate:1,synth:'whoosh',cooldownMs:80},
   rumble:{volume:.15,rate:1,synth:'rumble',cooldownMs:100},
   pinball:{file:'/audio/pinball-bumper.mp3',volume:.38,rate:1.08,variance:.06,cooldownMs:100},

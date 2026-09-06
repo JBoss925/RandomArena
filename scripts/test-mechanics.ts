@@ -360,7 +360,7 @@ for(const [cue,definition] of Object.entries(soundCues)){
   if(definition.file)assert.ok(statSync(new URL(`../public${definition.file}`,import.meta.url)).size>2_000,`${cue} should map to an available audio file`);
 }
 assert.equal(soundCues.coin.file,'/audio/goldie-coin.mp3','Goldie stacks should use the dedicated coin cue');
-assert.equal(soundCues.jackpot.file,'/audio/goldie-jackpot.mp3','Goldie jackpot should use the dedicated cash-register cue');
+assert.equal(soundCues.jackpot.synth,'slotJackpot','Goldie jackpot should use the dedicated slot-machine payout cue');
 for(const cue of ['lanceCharge','lanceHit','grow','flail','magnetPull','magnetPush'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['droneLaunch','droneHit'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);
 for(const cue of ['webShot','webSwing','webImpact','webPerch'] as const)assert.ok(soundCues[cue],`${cue} should have an editable sound mapping`);

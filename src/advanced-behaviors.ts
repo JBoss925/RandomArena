@@ -63,7 +63,7 @@ export function advancedBehaviors(
       color: ball.f.accent,
       speed: 340,
       gravity: 120,
-      kind: type === "echo" ? "ring" : "star",
+      kind: type === "echo" ? "echo" : "crescent",
       size: 8,
     });
   }
@@ -297,7 +297,7 @@ export function advancedBehaviors(
                 color: ball.f.accent,
                 speed: 400,
                 gravity: 100,
-                kind: "bolt",
+                kind: "rocket",
                 size: 9,
               });
             }
@@ -339,7 +339,7 @@ export function advancedBehaviors(
           count: 24,
           color: c.ball.f.accent,
           speed: 440,
-          kind: "star",
+          kind: "rocket",
           size: 10,
         });
       },
@@ -453,7 +453,7 @@ export function advancedBehaviors(
           color: ball.f.accent,
           speed: 350,
           gravity: 0,
-          kind: "ring",
+          kind: "clock",
           size: 12,
         });
         c.emitParticles(ball, {
@@ -461,7 +461,7 @@ export function advancedBehaviors(
           color: ball.f.color,
           speed: 230,
           gravity: 0,
-          kind: "pixel",
+          kind: "clock",
           size: 8,
         });
         c.playSound("timeRewind");

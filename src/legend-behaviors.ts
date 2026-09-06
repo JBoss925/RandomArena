@@ -29,7 +29,7 @@ export function legendBehaviors(dispatch:Dispatch):Record<string,Behavior>{
     ball.phantomEcho={...path[0],path,progress:0,hit:false};
     ball.phantomCooldown=120;
     c.showImpact('AFTERIMAGE!',ball.phantomEcho);
-    c.emitParticles(ball.phantomEcho,{count:18,color:ball.f.accent,speed:180,gravity:0,kind:'ring',size:8});
+    c.emitParticles(ball.phantomEcho,{count:18,color:ball.f.accent,speed:180,gravity:0,kind:'ghost',size:8});
     c.playSound('phantomSpawn');
   }
 
@@ -135,7 +135,7 @@ export function legendBehaviors(dispatch:Dispatch):Record<string,Behavior>{
         const rx=(rival.tickStartX??rival.x)+rival.vx/120,ry=(rival.tickStartY??rival.y)+rival.vy/120;
         if(!echo.hit&&Math.hypot(echo.x-rx,echo.y-ry)<rival.radius+ball.radius*.82){
           echo.hit=true;hit(c,rival,13,'ECHO STRIKE!',echo,'echo');
-          c.emitParticles(echo,{count:22,color:ball.f.accent,speed:320,gravity:0,kind:'ring',size:9});c.playSound('phantomStrike');
+          c.emitParticles(echo,{count:22,color:ball.f.accent,speed:320,gravity:0,kind:'ghost',size:9});c.playSound('phantomStrike');
           ball.phantomEcho=undefined;
         }else if(index===echo.path.length-1)ball.phantomEcho=undefined;
       },
@@ -145,7 +145,7 @@ export function legendBehaviors(dispatch:Dispatch):Record<string,Behavior>{
         if(!echo||!event.phantomMisdirect)return;
         const old={x:ball.x,y:ball.y};ball.x=echo.x;ball.y=echo.y;echo.x=old.x;echo.y=old.y;
         ball.phantomEcho=undefined;ball.phantomCooldown=120;
-        c.showImpact('MISDIRECT!',ball);c.emitParticles(ball,{count:24,color:ball.f.accent,speed:250,gravity:0,kind:'pixel',size:8});c.playSound('phantomSpawn',{rate:1.25});
+        c.showImpact('MISDIRECT!',ball);c.emitParticles(ball,{count:24,color:ball.f.accent,speed:250,gravity:0,kind:'ghost',size:8});c.playSound('phantomSpawn',{rate:1.25});
       },
       drawBack({ball,ctx}){
         const echo=ball.phantomEcho;if(!echo)return;
