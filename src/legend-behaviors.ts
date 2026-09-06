@@ -3,6 +3,12 @@ import type {AlchemyFlask,AlchemyPool,Ball,Behavior,BehaviorContext,CombatEvent,
 
 type Dispatch=(ball:Ball,hook:'modifyIncoming'|'takeHit',context:Partial<BehaviorContext>)=>void;
 
+function capVelocity(ball:Ball,maximum:number):void{
+  const speed=Math.hypot(ball.vx,ball.vy);
+  if(speed<=maximum)return;
+  const scale=maximum/speed;ball.vx*=scale;ball.vy*=scale;
+}
+
 export function legendBehaviors(dispatch:Dispatch):Record<string,Behavior>{
   function hit(c:BehaviorContext,target:Ball,damage:number,label:string,point:Point,type:DamageType='physical',countHit=true):void{
     const {ball,sim}=c,before={left:sim.balls[0].hp,right:sim.balls[1].hp};
@@ -187,8 +193,8 @@ export function legendBehaviors(dispatch:Dispatch):Record<string,Behavior>{
       modifyIncoming(c){
         const {ball,rival,event}=c;if(event.damage<=0)return;
         const committedCharge=(rival.joustFrames??0)>0;
-        if(event.projectile&&rival.f.behaviors.includes('droneCarrier'))event.damage*=1.08;
-        if(rival.f.behaviors.includes('continuousAcceleration'))event.damage*=.5;
+        if(event.projectile&&rival.f.behaviors.includes('droneCarrier'))event.damage*=1.15;
+        if(rival.f.behaviors.includes('continuousAcceleration'))event.damage*=.65;
         if(committedCharge)event.damage*=.55;
         if(ball.ronin?.phase!=='focus'||committedCharge)return;
         if(event.weapon||event.projectile||event.ability){event.damage*=1.35;return;}
@@ -199,11 +205,15 @@ export function legendBehaviors(dispatch:Dispatch):Record<string,Behavior>{
         const state=ball.ronin;if(state?.phase!=='dash'||state.hit||state.startedTick===sim.ticks)return;
         const counterSpeedBonus=state.counter?Math.max(0,Math.min(45,(Math.hypot(rival.vx,rival.vy)-700)/18)):0;
         event.damage+=(state.final?42:state.counter?30+counterSpeedBonus:24)*ball.f.power;event.ability=true;event.roninCut=true;
+        if(rival.f.mass>=1.3)event.damage+=2*ball.f.power;
         if(state.final)event.shieldPenetration=.5;
       },
       dealHit(c){
         const {ball,rival,event}=c,state=ball.ronin;if(!state||!event.roninCut||state.hit)return;
         state.hit=true;state.phase='recovery';state.frames=36;ball.vx*=.42;ball.vy*=.42;
+        // A cut should read as a clean deflection, not inject dash velocity into
+        // the opponent for the remainder of the bout.
+        capVelocity(rival,820);
         ball.roninResolve=state.final?0:(ball.roninResolve??0)+1;
         c.showImpact(state.final?'FINAL CUT!':state.counter?'COUNTER CUT!':'DRAW CUT!',rival);c.emitParticles(rival,{count:state.final?32:22,color:ball.f.accent,speed:state.final?520:390,gravity:180,kind:'slash',size:10});c.playSound('roninCut',{rate:state.final?.72:1});
       },

@@ -58,12 +58,17 @@ for(const id of ['gatekeeper','conductor','matryoshka']){
 for(const [id,opponent,seed,phases] of [
   ['phantom','anchor','legend-phantom',['AFTERIMAGE!','ECHO STRIKE!','MISDIRECT!']],
   ['alchemist','anchor','cycle-alchemist-3',['ACID FLASK!','TONIC FLASK!','CATALYST FLASK!','ACID REACTION!']],
-  ['ronin','volt','ronin-full-volt-244',['FOCUS!','COUNTER!','COUNTER CUT!','FINAL FOCUS!','FINAL CUT!']],
+  ['ronin','volt','ronin-controlled-122',['FOCUS!','COUNTER!','COUNTER CUT!','FINAL FOCUS!','FINAL CUT!']],
 ] as const){
   const first=simulateMatch(fighter(id),fighter(opponent),seed);
   assert.deepEqual(first,simulateMatch(fighter(id),fighter(opponent),seed),`${id} must replay its full attack cycle deterministically`);
   for(const phase of phases)assert.ok(first.events[phase]>0,`${id} must activate ${phase} during a real bout`);
 }
+const ronin=makeBall('ronin','left'),cutTarget=makeBall('volt','right');
+Object.assign(ronin,{vx:1480,vy:0,ronin:{phase:'recovery',frames:36,angle:0,hit:false,counter:false,final:false,startedTick:1}});
+Object.assign(cutTarget,{vx:1850,vy:720});
+runBehaviorHook(ronin,'dealHit',{rival:cutTarget,event:{damage:24,force:12,ability:true,roninCut:true},showImpact:()=>{},emitParticles:()=>{},playSound:()=>{}});
+assert.ok(Math.abs(Math.hypot(cutTarget.vx,cutTarget.vy)-820)<1e-9,'a Ronin Cut should resolve into a forceful but controlled deflection');
 const boxer=makeBall('dynamo','left'),boxerTarget=makeBall('brick','right');
 const dynamoInfo=fighter('dynamo');
 for(const term of ['Wind Up','Dash','Rocket Punch','Ground Burst','Recovery','Impact Guard'])assert.match(dynamoInfo.desc,new RegExp(term),`Dynamo should consistently explain ${term}`);
